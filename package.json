@@ -1,0 +1,38 @@
+{
+  "name": "tg_bot_cv_creator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nighty3098/CV_CREATOR_BOT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nighty3098/CV_CREATOR_BOT/issues"
+  },
+  "homepage": "https://github.com/Nighty3098/CV_CREATOR_BOT#readme",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "nodemailer": "^7.0.3",
+    "telegraf": "^4.16.3",
+    "axios": "^1.6.8",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "@types/nodemailer": "^6.4.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "@types/express": "^4.17.21"
+  }
+}
