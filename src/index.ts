@@ -50,170 +50,202 @@ interface PendingAdminAction {
 }
 const pendingAdminActions = new Map<number, PendingAdminAction>();
 
+// Глобальный обработчик ошибок для Telegraf
+bot.catch((err, ctx) => {
+  console.error('Unhandled error in bot:', err);
+  // Не отправляем сообщение пользователю
+});
+
 bot.on("callback_query", async (ctx) => {
-  const callbackQuery = ctx.callbackQuery as any;
-  const data = callbackQuery?.data;
-  if (!data) return;
-  if (data.startsWith("send_result_")) {
-    // Только для админа
-    if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
-      await ctx.answerCbQuery(MESSAGES.admin.noAccess);
-      return;
-    }
-    // Парсим orderId и userId из callback_data
-    const match = data.match(/^send_result_(.+)_(\d+)$/);
-    if (!match) {
-      await ctx.reply(MESSAGES.admin.errorParsingUser);
+  try {
+    const callbackQuery = ctx.callbackQuery as any;
+    const data = callbackQuery?.data;
+    if (!data) return;
+    if (data.startsWith("send_result_")) {
+      // Только для админа
+      if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
+        await ctx.answerCbQuery(MESSAGES.admin.noAccess);
+        return;
+      }
+      // Парсим orderId и userId из callback_data
+      const match = data.match(/^send_result_(.+)_(\d+)$/);
+      if (!match) {
+        await ctx.reply(MESSAGES.admin.errorParsingUser);
+        pendingAdminActions.set(ctx.from.id, {
+          orderId: "",
+          userId: 0,
+          realUserId: 0,
+        });
+        return;
+      }
+      const orderId = match[1];
+      const userId = Number(match[2]);
+      await ctx.reply(MESSAGES.admin.sendFile);
       pendingAdminActions.set(ctx.from.id, {
-        orderId: "",
-        userId: 0,
-        realUserId: 0,
+        orderId,
+        userId,
+        realUserId: userId,
       });
-      return;
     }
-    const orderId = match[1];
-    const userId = Number(match[2]);
-    await ctx.reply(MESSAGES.admin.sendFile);
-    pendingAdminActions.set(ctx.from.id, {
-      orderId,
-      userId,
-      realUserId: userId,
-    });
+  } catch (err) {
+    console.error('Error in callback_query handler:', err);
+    await ctx.reply('Произошла ошибка при обработке запроса. Попробуйте ещё раз.');
   }
 });
 
 bot.on("message", async (ctx) => {
-  // Если админ только что нажал "Отправить файл"
-  if (
-    ctx.from?.id?.toString() === ADMIN_CHAT_ID &&
-    pendingAdminActions.has(ctx.from.id)
-  ) {
-    const action = pendingAdminActions.get(ctx.from.id)!;
-    // Если ждем userId
+  try {
+    // Если админ только что нажал "Отправить файл"
     if (
-      action.userId === 0 &&
-      ctx.message &&
-      "text" in ctx.message &&
-      /^\d+$/.test(ctx.message.text)
+      ctx.from?.id?.toString() === ADMIN_CHAT_ID &&
+      pendingAdminActions.has(ctx.from.id)
     ) {
-      action.userId = Number(ctx.message.text);
-      action.realUserId = action.userId;
-      pendingAdminActions.set(ctx.from.id, action);
-      await ctx.reply(MESSAGES.admin.sendFile);
-      return;
-    }
-    // Если ждем файл
-    if (
-      action.userId > 0 &&
-      ctx.message &&
-      ("document" in ctx.message || "video" in ctx.message)
-    ) {
-      if ("document" in ctx.message) {
-        await ctx.telegram.sendDocument(
-          action.userId,
-          ctx.message.document.file_id,
-          {
-            caption: MESSAGES.client.fileReceived(action.orderId),
-          },
-        );
-        // Отправка на email, если выбран способ доставки email
-        const order = findOrderByOrderId(action.orderId);
-        console.log("[DEBUG] order найден:", order);
-        if (order && order.delivery === "email" && order.email) {
+      const action = pendingAdminActions.get(ctx.from.id)!;
+      // Если ждем userId
+      if (
+        action.userId === 0 &&
+        ctx.message &&
+        "text" in ctx.message &&
+        /^\d+$/.test(ctx.message.text)
+      ) {
+        action.userId = Number(ctx.message.text);
+        action.realUserId = action.userId;
+        pendingAdminActions.set(ctx.from.id, action);
+        await ctx.reply(MESSAGES.admin.sendFile);
+        return;
+      }
+      // Если ждем файл
+      if (
+        action.userId > 0 &&
+        ctx.message &&
+        ("document" in ctx.message || "video" in ctx.message)
+      ) {
+        if ("document" in ctx.message) {
           try {
-            console.log(
-              "[DEBUG] Готовлюсь вызвать sendClientEmail для резюме",
-              order.email,
-              ctx.message.document.file_name,
-            );
-            const fileUrl = await ctx.telegram.getFileLink(
+            await ctx.telegram.sendDocument(
+              action.userId,
               ctx.message.document.file_id,
+              {
+                caption: MESSAGES.client.fileReceived(action.orderId),
+              },
             );
-            const response = await axios.get(fileUrl.toString(), {
-              responseType: "arraybuffer",
-            });
-            await sendClientEmail(
-              order.email,
-              MESSAGES.email.resumeSubject,
-              MESSAGES.email.resumeBody,
-              [
-                {
-                  filename: ctx.message.document.file_name,
-                  content: Buffer.from(response.data),
-                },
-              ],
-            );
-            console.log(`[EMAIL] Резюме отправлено на ${order.email}`);
-          } catch (e) {
-            console.error(
-              `[EMAIL ERROR] Не удалось отправить резюме на ${order.email}:`,
-              e,
-            );
+            // Отправка на email, если выбран способ доставки email
+            const order = findOrderByOrderId(action.orderId);
+            console.log("[DEBUG] order найден:", order);
+            if (order && order.delivery === "email" && order.email) {
+              try {
+                console.log(
+                  "[DEBUG] Готовлюсь вызвать sendClientEmail для резюме",
+                  order.email,
+                  ctx.message.document.file_name,
+                );
+                const fileUrl = await ctx.telegram.getFileLink(
+                  ctx.message.document.file_id,
+                );
+                const response = await axios.get(fileUrl.toString(), {
+                  responseType: "arraybuffer",
+                });
+                await sendClientEmail(
+                  order.email,
+                  MESSAGES.email.resumeSubject,
+                  MESSAGES.email.resumeBody,
+                  [
+                    {
+                      filename: ctx.message.document.file_name,
+                      content: Buffer.from(response.data),
+                    },
+                  ],
+                );
+                console.log(`[EMAIL] Резюме отправлено на ${order.email}`);
+              } catch (e) {
+                console.error(
+                  `[EMAIL ERROR] Не удалось отправить резюме на ${order.email}:`,
+                  e,
+                );
+              }
+            }
+          } catch (err) {
+            console.error('Error sending document:', err);
+            await ctx.reply('Ошибка при отправке файла клиенту.');
           }
         }
-      } else if ("video" in ctx.message) {
-        await ctx.telegram.sendVideo(action.userId, ctx.message.video.file_id, {
-          caption: MESSAGES.client.videoReceived(action.orderId),
-        });
-        // Отправка на email, если выбран способ доставки email
-        const order = findOrderByOrderId(action.orderId);
-        console.log("[DEBUG] order найден:", order);
-        if (order && order.delivery === "email" && order.email) {
+        if ("video" in ctx.message) {
           try {
-            console.log(
-              "[DEBUG] Готовлюсь вызвать sendClientEmail для видео",
-              order.email,
-            );
-            const fileUrl = await ctx.telegram.getFileLink(
-              ctx.message.video.file_id,
-            );
-            const response = await axios.get(fileUrl.toString(), {
-              responseType: "arraybuffer",
+            await ctx.telegram.sendVideo(action.userId, ctx.message.video.file_id, {
+              caption: MESSAGES.client.videoReceived(action.orderId),
             });
-            await sendClientEmail(
-              order.email,
-              MESSAGES.email.videoSubject,
-              MESSAGES.email.videoBody,
-              [
-                {
-                  filename: "video.mp4",
-                  content: Buffer.from(response.data),
-                },
-              ],
-            );
-            console.log(`[EMAIL] Видеоразбор отправлен на ${order.email}`);
-          } catch (e) {
-            console.error(
-              `[EMAIL ERROR] Не удалось отправить видеоразбор на ${order.email}:`,
-              e,
-            );
+            // Отправка на email, если выбран способ доставки email
+            const order = findOrderByOrderId(action.orderId);
+            console.log("[DEBUG] order найден:", order);
+            if (order && order.delivery === "email" && order.email) {
+              try {
+                console.log(
+                  "[DEBUG] Готовлюсь вызвать sendClientEmail для видео",
+                  order.email,
+                );
+                const fileUrl = await ctx.telegram.getFileLink(
+                  ctx.message.video.file_id,
+                );
+                const response = await axios.get(fileUrl.toString(), {
+                  responseType: "arraybuffer",
+                });
+                await sendClientEmail(
+                  order.email,
+                  MESSAGES.email.videoSubject,
+                  MESSAGES.email.videoBody,
+                  [
+                    {
+                      filename: "video.mp4",
+                      content: Buffer.from(response.data),
+                    },
+                  ],
+                );
+                console.log(`[EMAIL] Видеоразбор отправлен на ${order.email}`);
+              } catch (e) {
+                console.error(
+                  `[EMAIL ERROR] Не удалось отправить видеоразбор на ${order.email}:`,
+                  e,
+                );
+              }
+            }
+          } catch (err) {
+            console.error('Error sending video:', err);
+            await ctx.reply('Ошибка при отправке видео клиенту.');
           }
         }
+        await ctx.reply(MESSAGES.admin.fileSent);
+        action.userId = -1; // Ожидаем текст
+        pendingAdminActions.set(ctx.from.id, action);
+        return;
       }
-      await ctx.reply(MESSAGES.admin.fileSent);
-      action.userId = -1; // Ожидаем текст
-      pendingAdminActions.set(ctx.from.id, action);
-      return;
-    }
-    // Если ждем текст
-    if (action.userId === -1 && ctx.message && "text" in ctx.message) {
-      await ctx.telegram.sendMessage(
-        action.realUserId,
-        ctx.message.text + MESSAGES.client.fileComment,
-      );
-      // Отправка текста на email, если выбран способ доставки email
-      const order = findOrderByOrderId(action.orderId);
-      if (order && order.delivery === "email" && order.email) {
-        await sendClientEmail(
-          order.email,
-          MESSAGES.email.commentSubject,
-          ctx.message.text + MESSAGES.client.fileComment,
-        );
+      // Если ждем текст
+      if (action.userId === -1 && ctx.message && "text" in ctx.message) {
+        try {
+          await ctx.telegram.sendMessage(
+            action.realUserId,
+            ctx.message.text + MESSAGES.client.fileComment,
+          );
+          // Отправка текста на email, если выбран способ доставки email
+          const order = findOrderByOrderId(action.orderId);
+          if (order && order.delivery === "email" && order.email) {
+            await sendClientEmail(
+              order.email,
+              MESSAGES.email.commentSubject,
+              ctx.message.text + MESSAGES.client.fileComment,
+            );
+          }
+          await ctx.reply(MESSAGES.admin.messageSent);
+          pendingAdminActions.delete(ctx.from.id);
+          return;
+        } catch (err) {
+          console.error('Error sending message to client:', err);
+          await ctx.reply('Ошибка при отправке сообщения клиенту.');
+        }
       }
-      await ctx.reply(MESSAGES.admin.messageSent);
-      pendingAdminActions.delete(ctx.from.id);
-      return;
     }
+  } catch (err) {
+    console.error('Error in message handler:', err);
+    await ctx.reply('Произошла ошибка при обработке сообщения. Попробуйте ещё раз.');
   }
 });
 
