@@ -8,6 +8,7 @@ import { mainMenuScene, exampleScene, reviewScene, fullResumeScene } from './sce
 import { BotContext } from './bot.context';
 import { sendAdminEmail, sendClientEmail } from './email';
 import { Order } from './types';
+import { MESSAGES } from './messages';
 import axios from 'axios';
 import express, { Request, Response } from 'express';
 
@@ -23,19 +24,19 @@ bot.use(stage.middleware());
 // Главное меню
 function getMainMenu() {
   return Markup.keyboard([
-    ['📄 Работа с резюме'],
+    [MESSAGES.buttons.workWithResume],
   ]).resize();
 }
 
 bot.start((ctx) => {
   console.log("STARTED: ", ctx.from.username);
   ctx.reply(
-    'Добро пожаловать! Я помогу вам с резюме.\n\nВыберите действие:',
+    MESSAGES.welcome,
     getMainMenu()
   );
 });
 
-bot.hears('📄 Работа с резюме', (ctx) => ctx.scene.enter('mainMenu'));
+bot.hears(MESSAGES.buttons.workWithResume, (ctx) => ctx.scene.enter('mainMenu'));
 
 // TODO: Подключить все сцены и обработчики
 
@@ -54,19 +55,19 @@ bot.on('callback_query', async (ctx) => {
   if (data.startsWith('send_result_')) {
     // Только для админа
     if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
-      await ctx.answerCbQuery('Нет доступа');
+      await ctx.answerCbQuery(MESSAGES.admin.noAccess);
       return;
     }
     // Парсим orderId и userId из callback_data
     const match = data.match(/^send_result_(.+)_(\d+)$/);
     if (!match) {
-      await ctx.reply('Ошибка: не удалось определить пользователя. Введите userId клиента:');
+      await ctx.reply(MESSAGES.admin.errorParsingUser);
       pendingAdminActions.set(ctx.from.id, { orderId: '', userId: 0, realUserId: 0 });
       return;
     }
     const orderId = match[1];
     const userId = Number(match[2]);
-    await ctx.reply('Отправьте файл (резюме или видео) для клиента.');
+    await ctx.reply(MESSAGES.admin.sendFile);
     pendingAdminActions.set(ctx.from.id, { orderId, userId, realUserId: userId });
   }
 });
@@ -80,14 +81,14 @@ bot.on('message', async (ctx) => {
       action.userId = Number(ctx.message.text);
       action.realUserId = action.userId;
       pendingAdminActions.set(ctx.from.id, action);
-      await ctx.reply('Теперь отправьте файл (резюме или видео) для клиента.');
+      await ctx.reply(MESSAGES.admin.sendFile);
       return;
     }
     // Если ждем файл
     if (action.userId > 0 && ctx.message && ('document' in ctx.message || 'video' in ctx.message)) {
       if ('document' in ctx.message) {
         await ctx.telegram.sendDocument(action.userId, ctx.message.document.file_id, {
-          caption: `Ваш файл. ID заказа: ${action.orderId}`
+          caption: MESSAGES.client.fileReceived(action.orderId)
         });
         // Отправка на email, если выбран способ доставки email
         const order = findOrderByOrderId(action.orderId);
@@ -97,7 +98,7 @@ bot.on('message', async (ctx) => {
             console.log('[DEBUG] Готовлюсь вызвать sendClientEmail для резюме', order.email, ctx.message.document.file_name);
             const fileUrl = await ctx.telegram.getFileLink(ctx.message.document.file_id);
             const response = await axios.get(fileUrl.toString(), { responseType: 'arraybuffer' });
-            await sendClientEmail(order.email, 'Ваше резюме', 'Ваше резюме во вложении. Если возникнут вопросы — пишите!', [
+            await sendClientEmail(order.email, MESSAGES.email.resumeSubject, MESSAGES.email.resumeBody, [
               {
                 filename: ctx.message.document.file_name,
                 content: Buffer.from(response.data)
@@ -110,7 +111,7 @@ bot.on('message', async (ctx) => {
         }
       } else if ('video' in ctx.message) {
         await ctx.telegram.sendVideo(action.userId, ctx.message.video.file_id, {
-          caption: `Ваш видеоразбор. ID заказа: ${action.orderId}`
+          caption: MESSAGES.client.videoReceived(action.orderId)
         });
         // Отправка на email, если выбран способ доставки email
         const order = findOrderByOrderId(action.orderId);
@@ -120,7 +121,7 @@ bot.on('message', async (ctx) => {
             console.log('[DEBUG] Готовлюсь вызвать sendClientEmail для видео', order.email);
             const fileUrl = await ctx.telegram.getFileLink(ctx.message.video.file_id);
             const response = await axios.get(fileUrl.toString(), { responseType: 'arraybuffer' });
-            await sendClientEmail(order.email, 'Ваш видеоразбор', 'Ваш видеоразбор во вложении. Если возникнут вопросы — пишите!', [
+            await sendClientEmail(order.email, MESSAGES.email.videoSubject, MESSAGES.email.videoBody, [
               {
                 filename: 'video.mp4',
                 content: Buffer.from(response.data)
@@ -132,20 +133,20 @@ bot.on('message', async (ctx) => {
           }
         }
       }
-      await ctx.reply('Файл отправлен клиенту. Теперь напишите текстовое сообщение для клиента.');
+      await ctx.reply(MESSAGES.admin.fileSent);
       action.userId = -1; // Ожидаем текст
       pendingAdminActions.set(ctx.from.id, action);
       return;
     }
     // Если ждем текст
     if (action.userId === -1 && ctx.message && 'text' in ctx.message) {
-      await ctx.telegram.sendMessage(action.realUserId, ctx.message.text + '\n\nСсылка на облачное хранилище будет доступна 48 часов, пожалуйста, сохраните файл себе на компьютер.');
+      await ctx.telegram.sendMessage(action.realUserId, ctx.message.text + MESSAGES.client.fileComment);
       // Отправка текста на email, если выбран способ доставки email
       const order = findOrderByOrderId(action.orderId);
       if (order && order.delivery === 'email' && order.email) {
-        await sendClientEmail(order.email, 'Комментарий к вашему заказу', ctx.message.text + '\n\nСсылка на облачное хранилище будет доступна 48 часов, пожалуйста, сохраните файл себе на компьютер.');
+        await sendClientEmail(order.email, MESSAGES.email.commentSubject, ctx.message.text + MESSAGES.client.fileComment);
       }
-      await ctx.reply('Сообщение отправлено клиенту.');
+      await ctx.reply(MESSAGES.admin.messageSent);
       pendingAdminActions.delete(ctx.from.id);
       return;
     }
@@ -173,18 +174,18 @@ function scheduleInterviewReminders(order: Order, botInstance: typeof bot) {
   const msTo1h = interviewDate.getTime() - now.getTime() - 1 * 60 * 60 * 1000;
   if (msTo24h > 0) {
     setTimeout(() => {
-      if (!order.interviewReminded24h) {
-        botInstance.telegram.sendMessage(order.userId, `Напоминание: ваше интервью назначено на ${order.interviewTime} (через 24 часа).`);
-        botInstance.telegram.sendMessage(ADMIN_CHAT_ID, `Напоминание: интервью с клиентом @${order.username} (${order.userId}) через 24 часа (${order.interviewTime}).`);
+      if (!order.interviewReminded24h && order.interviewTime) {
+        botInstance.telegram.sendMessage(order.userId, MESSAGES.admin.interviewReminder24h(order.interviewTime));
+        botInstance.telegram.sendMessage(ADMIN_CHAT_ID, MESSAGES.admin.adminReminder24h(order.username || 'Unknown', order.userId, order.interviewTime));
         order.interviewReminded24h = true;
       }
     }, msTo24h);
   }
   if (msTo1h > 0) {
     setTimeout(() => {
-      if (!order.interviewReminded1h) {
-        botInstance.telegram.sendMessage(order.userId, `Напоминание: ваше интервью начнётся через 1 час (${order.interviewTime}).`);
-        botInstance.telegram.sendMessage(ADMIN_CHAT_ID, `Напоминание: интервью с клиентом @${order.username} (${order.userId}) через 1 час (${order.interviewTime}).`);
+      if (!order.interviewReminded1h && order.interviewTime) {
+        botInstance.telegram.sendMessage(order.userId, MESSAGES.admin.interviewReminder1h(order.interviewTime));
+        botInstance.telegram.sendMessage(ADMIN_CHAT_ID, MESSAGES.admin.adminReminder1h(order.username || 'Unknown', order.userId, order.interviewTime));
         order.interviewReminded1h = true;
       }
     }, msTo1h);
@@ -202,9 +203,9 @@ app.post('/calendly-webhook', (req: Request, res: Response) => {
     scheduleInterviewReminders(order, bot);
     // Уведомление клиенту и админу
     if (order.userId) {
-      bot.telegram.sendMessage(order.userId, `Ваше интервью подтверждено на ${event_time}. Если время не подходит — свяжитесь с администратором.`);
+      bot.telegram.sendMessage(order.userId, MESSAGES.admin.interviewConfirmed(event_time));
     }
-    bot.telegram.sendMessage(ADMIN_CHAT_ID, `Клиент @${order.username} (${order.userId}) забронировал интервью на ${event_time} (заказ №${order.id}).`);
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, MESSAGES.admin.adminBookingConfirmation(order.username || 'Unknown', order.userId, event_time, order.id));
     res.status(200).send('ok');
   } else {
     res.status(404).send('order not found');

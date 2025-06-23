@@ -7,26 +7,27 @@ import { isValidEmail, isValidImageFile, isValidResumeFile, generateOrderId } fr
 import { sendAdminEmail } from './email';
 import { orders } from './index';
 import { Order } from './types';
+import { MESSAGES } from './messages';
 
 export const mainMenuScene = new Scenes.BaseScene<BotContext>('mainMenu');
 
 mainMenuScene.enter((ctx) => {
   ctx.reply(
-    'Выберите услугу:',
+    MESSAGES.mainMenu,
     Markup.keyboard([
-      ['🛒 Готовое резюме из базы | Андрей! Я сделаю сам!'],
-      ['🔍 Разбор-прожарка резюме | Андрей! Помоги мне улучшить!'],
-      ['✨ Резюме «Под ключ» | Андрей! Сделай за меня!'],
-      ['⬅️ Выйти']
+      [MESSAGES.buttons.exampleResume],
+      [MESSAGES.buttons.reviewResume],
+      [MESSAGES.buttons.fullResume],
+      [MESSAGES.buttons.exit]
     ]).resize()
   );
 });
 
-mainMenuScene.hears('🛒 Готовое резюме из базы | Андрей! Я сделаю сам!', (ctx) => ctx.scene.enter('exampleScene'));
-mainMenuScene.hears('🔍 Разбор-прожарка резюме | Андрей! Помоги мне улучшить!', (ctx) => ctx.scene.enter('reviewScene'));
-mainMenuScene.hears('✨ Резюме «Под ключ» | Андрей! Сделай за меня!', (ctx) => ctx.scene.enter('fullResumeScene'));
-mainMenuScene.hears('⬅️ Выйти', (ctx) => {
-  ctx.reply('Выход в главное меню.', Markup.removeKeyboard());
+mainMenuScene.hears(MESSAGES.buttons.exampleResume, (ctx) => ctx.scene.enter('exampleScene'));
+mainMenuScene.hears(MESSAGES.buttons.reviewResume, (ctx) => ctx.scene.enter('reviewScene'));
+mainMenuScene.hears(MESSAGES.buttons.fullResume, (ctx) => ctx.scene.enter('fullResumeScene'));
+mainMenuScene.hears(MESSAGES.buttons.exit, (ctx) => {
+  ctx.reply(MESSAGES.exit, Markup.removeKeyboard());
   ctx.scene.leave();
 });
 
@@ -51,45 +52,45 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       delivery: 'telegram',
     } as Order;
     await ctx.reply(
-      'Что вы получите:\n\n• реальное, продающее компетенции резюме, которое я составлял под заказ на конкретную должность (без личных данных).\n\nКак это поможет вам:\n• поймёте структуру\n• заимствуете акценты на компетенциях и достижениях\n• сэкономите время\n\nЭто самый доступный способ получить профессиональные наработки и быстро создать сильное резюме.\n\nУкажите название должности для которой нужен Пример идеального резюме.\n\nПишите развернуто и объемно!\n\n✅ Пример: Менеджер по продажам банковских услуг\n✅ Пример: PHP-разработчик (Middle)\n❌ Не писать: Продажник, Программист',
-      Markup.keyboard([['✏️ в Главное меню']]).resize()
+      MESSAGES.exampleResume.description,
+      Markup.keyboard([[MESSAGES.buttons.editMainMenu]]).resize()
     );
     return ctx.wizard.next();
   },
   // Шаг 2: Получение должности
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text !== '✏️ в Главное меню') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text !== MESSAGES.buttons.editMainMenu) {
       (ctx.session as any).position = ctx.message.text.trim();
       await ctx.reply(
-        'Куда отправить готовый пример резюме?',
+        MESSAGES.exampleResume.deliveryChoice,
         Markup.keyboard([
-          ['✅ В этот чат в Telegram'],
-          ['📧 Отправить на E-mail'],
-          ['⬅️ Назад']
+          [MESSAGES.buttons.telegramDelivery],
+          [MESSAGES.buttons.emailDelivery],
+          [MESSAGES.buttons.back]
         ]).resize()
       );
       return ctx.wizard.next();
-    } else if (ctx.message && 'text' in ctx.message && ctx.message.text === '✏️ в Главное меню') {
+    } else if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.editMainMenu) {
       await ctx.scene.leave();
       await ctx.scene.enter('mainMenu');
     } else {
-      await ctx.reply('Пожалуйста, введите корректное название должности.');
+      await ctx.reply(MESSAGES.common.enterPosition);
     }
   },
   // Шаг 3: Выбор способа доставки
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === '✅ В этот чат в Telegram') {
+      if (ctx.message.text === MESSAGES.buttons.telegramDelivery) {
         (ctx.session as any).delivery = 'telegram';
         (ctx.session as any).email = undefined;
         orders[(ctx.session as any).orderId].delivery = 'telegram';
         orders[(ctx.session as any).orderId].email = undefined;
-      } else if (ctx.message.text === '📧 Отправить на E-mail') {
+      } else if (ctx.message.text === MESSAGES.buttons.emailDelivery) {
         (ctx.session as any).delivery = 'email';
         orders[(ctx.session as any).orderId].delivery = 'email';
-        await ctx.reply('Пожалуйста, введите ваш email:');
+        await ctx.reply(MESSAGES.exampleResume.enterEmail);
         return; // не next, ждем email
-      } else if (ctx.message.text === '⬅️ Назад') {
+      } else if (ctx.message.text === MESSAGES.buttons.back) {
         await ctx.scene.reenter();
         return;
       } else if (isValidEmail(ctx.message.text)) {
@@ -98,15 +99,15 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
         orders[(ctx.session as any).orderId].delivery = 'email';
         orders[(ctx.session as any).orderId].email = ctx.message.text.trim();
       } else {
-        await ctx.reply('Пожалуйста, выберите способ доставки или введите корректный email.');
+        await ctx.reply(MESSAGES.exampleResume.invalidEmail);
         return;
       }
       // upsell
       await ctx.reply(
-        'Желаете получить дополнительный видео-комментарий в формате видеозаписи? Я расскажу что ОБЯЗАТЕЛЬНО должно быть в резюме на эту должность.',
+        MESSAGES.exampleResume.upsell,
         Markup.keyboard([
-          ['👍 Да, добавить видео-совет (+199₽)'],
-          ['Нет, спасибо, только пример']
+          [MESSAGES.buttons.addVideoAdvice],
+          [MESSAGES.buttons.onlyExample]
         ]).resize()
       );
       return ctx.wizard.next();
@@ -124,10 +125,16 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       const price = (ctx.session as any).upsell ? PRICES.exampleWithVideo : PRICES.example;
       (ctx.session as any).price = price;
       await ctx.reply(
-        `Ваш заказ:\n\n📄 Пример резюме: ${(ctx.session as any).position}\n📧 Отправить: ${(ctx.session as any).delivery === 'email' ? (ctx.session as any).email : 'Telegram'}\n🗣️ Видео-комментарии: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\n-----------------\nИтого к оплате: ${price} рублей\nСрок исполнения: 24 часа (по рабочим дням).\n\nВсе верно?`,
+        MESSAGES.exampleResume.orderSummary(
+          (ctx.session as any).position,
+          (ctx.session as any).delivery,
+          (ctx.session as any).email || '',
+          (ctx.session as any).upsell,
+          price
+        ),
         Markup.keyboard([
-          ['✅ Да, все верно'],
-          ['✏️ Изменить заказ']
+          [MESSAGES.buttons.confirm],
+          [MESSAGES.buttons.editOrder]
         ]).resize()
       );
       return ctx.wizard.next();
@@ -136,36 +143,45 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 5: Подтверждение заказа
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === '✅ Да, все верно') {
+      if (ctx.message.text === MESSAGES.buttons.confirm) {
         await ctx.reply(
-          `Для оплаты переведите ${(ctx.session as any).price} рублей одним из удобных способов:\n\n💳 Картой по номеру: [номер карты]\n📞 По номеру телефона (СБП): [номер телефона]\n\nПосле оплаты, пожалуйста, обязательно вернитесь в этот чат и нажмите кнопку ниже, чтобы прикрепить чек.`,
+          MESSAGES.exampleResume.paymentInstructions((ctx.session as any).price),
           Markup.keyboard([
-            ['📸 Я оплатил(а) и готов(а) прикрепить чек']
+            [MESSAGES.buttons.attachReceipt]
           ]).resize()
         );
         return ctx.wizard.next();
-      } else if (ctx.message.text === '✏️ Изменить заказ') {
+      } else if (ctx.message.text === MESSAGES.buttons.editOrder) {
         await ctx.scene.reenter();
       } else {
-        await ctx.reply('Пожалуйста, подтвердите заказ или измените его.');
+        await ctx.reply(MESSAGES.common.confirmOrder);
       }
     }
   },
   // Шаг 6: Ожидание оплаты и загрузка чека
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '📸 Я оплатил(а) и готов(а) прикрепить чек') {
-      await ctx.reply('Пожалуйста, прикрепите скриншот или фото чека (jpg, jpeg, png).');
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceipt) {
+      await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
       const photo = ctx.message.photo[ctx.message.photo.length - 1];
       (ctx.session as any).receiptFileId = photo.file_id;
       await ctx.reply(
-        `Спасибо, чек получен! Ваш заказ №${(ctx.session as any).orderId} принят в работу.\nЯ подберу наиболее подходящий пример резюме и отправлю его вам сюда, в этот чат, в течение 24 часов (в рабочие дни).`,
+        MESSAGES.exampleResume.orderAccepted((ctx.session as any).orderId),
         Markup.removeKeyboard()
       );
-      const adminMsg =
-        `🔔 НОВЫЙ ЗАКАЗ №${(ctx.session as any).orderId}: Пример резюме\n-----------------\nКлиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\nТариф: Пример резюме\nДолжность: ${(ctx.session as any).position}\nДоставка: ${(ctx.session as any).delivery === 'email' ? (ctx.session as any).email : 'Telegram'}\nВидео-комментарии: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\nСумма: ${(ctx.session as any).price} рублей\nСтатус: ОПЛАЧЕН\n-----------------`;
+      const adminMsg = MESSAGES.exampleResume.adminNotification(
+        (ctx.session as any).orderId,
+        ctx.from?.first_name || '',
+        ctx.from?.username || '',
+        (ctx.session as any).userId,
+        (ctx.session as any).position,
+        (ctx.session as any).delivery,
+        (ctx.session as any).email || '',
+        (ctx.session as any).upsell,
+        (ctx.session as any).price
+      );
       await ctx.telegram.sendPhoto(
         ADMIN_CHAT_ID,
         photo.file_id,
@@ -189,11 +205,20 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       if (ctx.message.document && isValidImageFile(ctx.message.document.file_name || '')) {
         (ctx.session as any).receiptFileId = ctx.message.document.file_id;
         await ctx.reply(
-          `Спасибо, чек получен! Ваш заказ №${(ctx.session as any).orderId} принят в работу.\nЯ подберу наиболее подходящий пример резюме и отправлю его вам сюда, в этот чат, в течение 24 часов (в рабочие дни).`,
+          MESSAGES.exampleResume.orderAccepted((ctx.session as any).orderId),
           Markup.removeKeyboard()
         );
-        const adminMsg =
-          `🔔 НОВЫЙ ЗАКАЗ №${(ctx.session as any).orderId}: Пример резюме\n-----------------\nКлиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\nТариф: Пример резюме\nДолжность: ${(ctx.session as any).position}\nДоставка: ${(ctx.session as any).delivery === 'email' ? (ctx.session as any).email : 'Telegram'}\nВидео-комментарии: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\nСумма: ${(ctx.session as any).price} рублей\nСтатус: ОПЛАЧЕН\n-----------------`;
+        const adminMsg = MESSAGES.exampleResume.adminNotification(
+          (ctx.session as any).orderId,
+          ctx.from?.first_name || '',
+          ctx.from?.username || '',
+          (ctx.session as any).userId,
+          (ctx.session as any).position,
+          (ctx.session as any).delivery,
+          (ctx.session as any).email || '',
+          (ctx.session as any).upsell,
+          (ctx.session as any).price
+        );
         await ctx.telegram.sendDocument(
           ADMIN_CHAT_ID,
           ctx.message.document.file_id,
@@ -214,10 +239,10 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
         );
         return ctx.scene.leave();
       } else {
-        await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+        await ctx.reply(MESSAGES.common.attachReceipt);
       }
     } else {
-      await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+      await ctx.reply(MESSAGES.common.attachReceipt);
     }
   }
 );
@@ -243,69 +268,69 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       delivery: 'telegram',
     } as Order;
     await ctx.reply(
-      'Вы присылаете мне ваше резюме.\nЯ запишу для вас подробный видео-разбор, где на вашем резюме проверю и покажу:\n\n• Правило 7 секунд.\n• Слепые зоны.\n• Точки роста.\n\nПосле этого разбора вы сможете самостоятельно усилить свое резюме.\n\nНажмите «🚀 Начать разбор» или вернитесь в меню.',
+      MESSAGES.reviewResume.description,
       Markup.keyboard([
-        ['🚀 Начать разбор'],
-        ['⬅️ Назад в меню']
+        [MESSAGES.buttons.startReview],
+        [MESSAGES.buttons.backToMenu]
       ]).resize()
     );
     return ctx.wizard.next();
   },
   // Шаг 2: Загрузка файла
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '⬅️ Назад в меню') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
       await ctx.scene.leave();
       await ctx.scene.enter('mainMenu');
       return;
     }
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '🚀 Начать разбор') {
-      await ctx.reply('Отлично! Пожалуйста, прикрепите файл с вашим резюме. Поддерживаемые форматы: .doc, .docx, .pdf');
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.startReview) {
+      await ctx.reply(MESSAGES.reviewResume.attachFile);
       return;
     }
     if (ctx.message && 'document' in ctx.message) {
       const fileName = ctx.message.document.file_name || '';
       if (!isValidResumeFile(fileName)) {
-        await ctx.reply('Пожалуйста, отправьте файл в формате .doc, .docx или .pdf');
+        await ctx.reply(MESSAGES.reviewResume.invalidFile);
         return;
       }
       (ctx.session as any).fileId = ctx.message.document.file_id;
       (ctx.session as any).fileName = fileName;
-      await ctx.reply('На какую должность (и в какую сферу) вы претендуете в первую очередь? Это поможет мне сделать разбор максимально точным.');
+      await ctx.reply(MESSAGES.reviewResume.enterPosition);
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, прикрепите файл с резюме.');
+    await ctx.reply(MESSAGES.common.attachFile);
   },
   // Шаг 3: Сбор дополнительной информации (3 вопроса)
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
       (ctx.session as any).position = ctx.message.text.trim();
-      await ctx.reply('Есть ли у вас ссылка на конкретную вакансию мечты? Если да, пришлите ее. Если нет — пропустите.');
+      await ctx.reply(MESSAGES.reviewResume.enterVacancy);
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, введите должность.');
+    await ctx.reply(MESSAGES.common.enterPositionPrompt);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
-      await ctx.reply('Есть ли что-то, на чем вы бы хотели, чтобы я сделал особый акцент при разборе? Если нет — пропустите.');
+      await ctx.reply(MESSAGES.reviewResume.enterComment);
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, введите ссылку или напишите "нет".');
+    await ctx.reply(MESSAGES.common.enterVacancy);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
       (ctx.session as any).comment = ctx.message.text.trim();
       // upsell
       await ctx.reply(
-        'Спасибо! Видео-разбор покажет ваши ошибки и точки роста. А хотите узнать не только "что исправить", но и "как исправить"?\n🔥 За +199 рублей я дополню разбор примерами идеальных формулировок из успешных резюме для вашей профессии.',
+        MESSAGES.reviewResume.upsell,
         Markup.keyboard([
-          ['👍 Да, с примерами (+199₽)'],
-          ['Нет, спасибо, только разбор']
+          [MESSAGES.buttons.addExamples],
+          [MESSAGES.buttons.onlyReview]
         ]).resize()
       );
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, напишите комментарий или "нет".');
+    await ctx.reply(MESSAGES.common.enterComment);
   },
   // Шаг 4: Upsell
   async (ctx) => {
@@ -319,10 +344,15 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       const price = (ctx.session as any).upsell ? PRICES.reviewWithExamples : PRICES.review;
       (ctx.session as any).price = price;
       await ctx.reply(
-        `Ваш заказ:\n\n✔️ Услуга: Видео-разбор резюме\n✔️ Файл: ${(ctx.session as any).fileName}\n✔️ Целевая должность: ${(ctx.session as any).position}\n✔️ Примеры формулировок: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\n-----------------\nИтого к оплате: ${price} рублей\nСрок исполнения: 1 рабочий день\n\nВсе верно?`,
+        MESSAGES.reviewResume.orderSummary(
+          (ctx.session as any).fileName,
+          (ctx.session as any).position,
+          (ctx.session as any).upsell,
+          price
+        ),
         Markup.keyboard([
-          ['✅ Да, перейти к оплате'],
-          ['✏️ Начать заново']
+          [MESSAGES.buttons.confirmPayment],
+          [MESSAGES.buttons.startOver]
         ]).resize()
       );
       return ctx.wizard.next();
@@ -331,45 +361,46 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
   // Шаг 5: Подтверждение заказа
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === '✅ Да, перейти к оплате') {
+      if (ctx.message.text === MESSAGES.buttons.confirmPayment) {
         await ctx.reply(
-          `Для оплаты переведите ${(ctx.session as any).price} рублей одним из удобных способов:\n\n💳 Картой по номеру: [номер карты]\n📞 По номеру телефона (СБП): [номер телефона]\n\nПосле оплаты, пожалуйста, обязательно вернитесь в этот чат и нажмите кнопку ниже, чтобы прикрепить чек.`,
+          MESSAGES.exampleResume.paymentInstructions((ctx.session as any).price),
           Markup.keyboard([
-            ['📸 Я оплатил(а) и готов(а) прикрепить чек']
+            [MESSAGES.buttons.attachReceipt]
           ]).resize()
         );
         return ctx.wizard.next();
-      } else if (ctx.message.text === '✏️ Начать заново') {
+      } else if (ctx.message.text === MESSAGES.buttons.startOver) {
         await ctx.scene.reenter();
       } else {
-        await ctx.reply('Пожалуйста, подтвердите заказ или начните заново.');
+        await ctx.reply(MESSAGES.common.confirmOrderOrRestart);
       }
     }
   },
   // Шаг 6: Ожидание оплаты и загрузка чека
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '📸 Я оплатил(а) и готов(а) прикрепить чек') {
-      await ctx.reply('Пожалуйста, прикрепите скриншот или фото чека (jpg, jpeg, png).');
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceipt) {
+      await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
       const photo = ctx.message.photo[ctx.message.photo.length - 1];
       (ctx.session as any).receiptFileId = photo.file_id;
       await ctx.reply(
-        `Спасибо, чек получен! Ваш заказ №${(ctx.session as any).orderId} принят в работу.\nЯ подготовлю видео-разбор и отправлю его вам сюда, в этот чат, в течение 1 рабочего дня.`,
+        MESSAGES.reviewResume.orderAccepted((ctx.session as any).orderId),
         Markup.removeKeyboard()
       );
-      const adminMsg =
-        `🔔 НОВЫЙ ЗАКАЗ №${(ctx.session as any).orderId}: Разбор резюме\n-----------------\n` +
-        `Клиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\n` +
-        `Тариф: Разбор-прожарка\n` +
-        `Файл: ${(ctx.session as any).fileName}\n` +
-        `Целевая должность: ${(ctx.session as any).position}\n` +
-        `Вакансия: ${(ctx.session as any).vacancyUrl || '—'}\n` +
-        `Комментарий: ${(ctx.session as any).comment || '—'}\n` +
-        `Примеры формулировок: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\n` +
-        `Сумма: ${(ctx.session as any).price} рублей\n` +
-        `Статус: ОПЛАЧЕН\n-----------------`;
+      const adminMsg = MESSAGES.reviewResume.adminNotification(
+        (ctx.session as any).orderId,
+        ctx.from?.first_name || '',
+        ctx.from?.username || '',
+        (ctx.session as any).userId,
+        (ctx.session as any).fileName,
+        (ctx.session as any).position,
+        (ctx.session as any).vacancyUrl,
+        (ctx.session as any).comment,
+        (ctx.session as any).upsell,
+        (ctx.session as any).price
+      );
       await ctx.telegram.sendPhoto(
         ADMIN_CHAT_ID,
         photo.file_id,
@@ -393,20 +424,21 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       if (ctx.message.document && isValidImageFile(ctx.message.document.file_name || '')) {
         (ctx.session as any).receiptFileId = ctx.message.document.file_id;
         await ctx.reply(
-          `Спасибо, чек получен! Ваш заказ №${(ctx.session as any).orderId} принят в работу.\nЯ подготовлю видео-разбор и отправлю его вам сюда, в этот чат, в течение 1 рабочего дня.`,
+          MESSAGES.reviewResume.orderAccepted((ctx.session as any).orderId),
           Markup.removeKeyboard()
         );
-        const adminMsg =
-          `🔔 НОВЫЙ ЗАКАЗ №${(ctx.session as any).orderId}: Разбор резюме\n-----------------\n` +
-          `Клиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\n` +
-          `Тариф: Разбор-прожарка\n` +
-          `Файл: ${(ctx.session as any).fileName}\n` +
-          `Целевая должность: ${(ctx.session as any).position}\n` +
-          `Вакансия: ${(ctx.session as any).vacancyUrl || '—'}\n` +
-          `Комментарий: ${(ctx.session as any).comment || '—'}\n` +
-          `Примеры формулировок: ${(ctx.session as any).upsell ? 'Да' : 'Нет'}\n` +
-          `Сумма: ${(ctx.session as any).price} рублей\n` +
-          `Статус: ОПЛАЧЕН\n-----------------`;
+        const adminMsg = MESSAGES.reviewResume.adminNotification(
+          (ctx.session as any).orderId,
+          ctx.from?.first_name || '',
+          ctx.from?.username || '',
+          (ctx.session as any).userId,
+          (ctx.session as any).fileName,
+          (ctx.session as any).position,
+          (ctx.session as any).vacancyUrl,
+          (ctx.session as any).comment,
+          (ctx.session as any).upsell,
+          (ctx.session as any).price
+        );
         await ctx.telegram.sendDocument(
           ADMIN_CHAT_ID,
           ctx.message.document.file_id,
@@ -427,10 +459,10 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
         );
         return ctx.scene.leave();
       } else {
-        await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+        await ctx.reply(MESSAGES.common.attachReceipt);
       }
     } else {
-      await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+      await ctx.reply(MESSAGES.common.attachReceipt);
     }
   }
 );
@@ -455,29 +487,29 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       delivery: 'telegram',
     } as Order;
     await ctx.reply(
-      'Вы устраиваетесь на ответственную должность, и понимаете, что от резюме зависит слишком многое, чтобы делать его "на коленке".\n\nЯ проведу с вами часовое интервью, соберу всю необходимую информацию и составлю для вас сильное, готовое резюме.\n\nНажмите «Выбрать тариф и начать» или вернитесь в меню.',
+      MESSAGES.fullResume.description,
       Markup.keyboard([
-        ['Выбрать тариф и начать'],
-        ['⬅️ Назад в меню']
+        [MESSAGES.buttons.selectTariff],
+        [MESSAGES.buttons.backToMenu]
       ]).resize()
     );
     return ctx.wizard.next();
   },
   // Шаг 2: Выбор тарифа
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '⬅️ Назад в меню') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
       await ctx.scene.leave();
       await ctx.scene.enter('mainMenu');
       return;
     }
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === 'Выбрать тариф и начать') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.selectTariff) {
       await ctx.reply(
-        'Чтобы выбрать подходящий тариф, ориентируйтесь на тип задач, которые вы решаете.',
+        MESSAGES.fullResume.tariffSelection,
         Markup.keyboard([
-          ['Резюме "Исполнитель" - 1999₽'],
-          ['Резюме "Профи" - 2999₽'],
-          ['Резюме "Руководитель" - 3999₽'],
-          ['⬅️ Назад']
+          [MESSAGES.buttons.juniorTariff],
+          [MESSAGES.buttons.proTariff],
+          [MESSAGES.buttons.leadTariff],
+          [MESSAGES.buttons.back]
         ]).resize()
       );
       return;
@@ -491,16 +523,16 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         tariff = 'pro'; price = PRICES.full.pro;
       } else if (ctx.message.text.startsWith('Резюме "Руководитель"')) {
         tariff = 'lead'; price = PRICES.full.lead;
-      } else if (ctx.message.text === '⬅️ Назад') {
+      } else if (ctx.message.text === MESSAGES.buttons.back) {
         await ctx.scene.reenter();
         return;
       } else {
-        await ctx.reply('Пожалуйста, выберите тариф из списка.');
+        await ctx.reply(MESSAGES.common.selectTariff);
         return;
       }
       (ctx.session as any).tariff = tariff;
       (ctx.session as any).price = price;
-      await ctx.reply('Прикрепите ваше старое резюме, если оно есть. Если нет — напишите "нет".');
+      await ctx.reply(MESSAGES.fullResume.attachOldResume);
       return ctx.wizard.next();
     }
   },
@@ -513,16 +545,16 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       (ctx.session as any).oldResumeFileId = undefined;
       (ctx.session as any).oldResumeFileName = undefined;
     }
-    await ctx.reply('Укажите ссылку на желаемую вакансию или название должности, на которую претендуете.');
+    await ctx.reply(MESSAGES.fullResume.enterVacancy);
     return ctx.wizard.next();
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
-      await ctx.reply('Если есть дополнительные пожелания к будущему резюме, напишите их здесь. Если нет — напишите "нет".');
+      await ctx.reply(MESSAGES.fullResume.enterWishes);
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, введите ссылку или название должности.');
+    await ctx.reply(MESSAGES.common.enterVacancyOrPosition);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
@@ -530,41 +562,41 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       // Предоплата
       const prepay = Math.floor((ctx.session as any).price / 2);
       await ctx.reply(
-        `Спасибо! Следующий шаг — глубинное интервью. Для бронирования времени необходимо внести предоплату 50%: ${prepay} рублей.\n❗️Важно: Интервью начинается строго в назначенное время и не переносится. Предоплата не возвращается в случае вашей неявки.`,
+        MESSAGES.fullResume.prepaymentInfo(prepay),
         Markup.keyboard([
-          ['✅ Перейти к оплате предоплаты']
+          [MESSAGES.buttons.payPrepayment]
         ]).resize()
       );
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, напишите пожелания или "нет".');
+    await ctx.reply(MESSAGES.common.enterWishes);
   },
   // Шаг 4: Оплата предоплаты
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '✅ Перейти к предоплате') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payPrepayment) {
       const prepay = Math.floor((ctx.session as any).price / 2);
       await ctx.reply(
-        `Для предоплаты переведите ${prepay} рублей:\n\n💳 Картой по номеру: [номер карты]\n📞 По номеру телефона (СБП): [номер телефона]\n\nПосле оплаты прикрепите чек.`,
+        MESSAGES.fullResume.prepaymentInstructions(prepay),
         Markup.keyboard([
-          ['📸 Я оплатил(а) и готов(а) прикрепить чек (предоплата)']
+          [MESSAGES.buttons.attachReceiptPrepay]
         ]).resize()
       );
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, нажмите "Перейти к оплате предоплаты".');
+    await ctx.reply(MESSAGES.common.payPrepayment);
   },
   // Шаг 5: Загрузка чека предоплаты
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '📸 Я оплатил(а) и готов(а) прикрепить чек (предоплата)') {
-      await ctx.reply('Пожалуйста, прикрепите скриншот или фото чека (jpg, jpeg, png).');
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceiptPrepay) {
+      await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
       (ctx.session as any).prepayReceiptFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-      await ctx.reply('Предоплата получена! Теперь выберите удобное для вас время для интервью по ссылке: [ссылка на Calendly]. Доступные слоты: Пн-Пт.\n\nПожалуйста, после выбора времени скопируйте и отправьте его сюда (например: 2024-07-01 15:00).');
+      await ctx.reply(MESSAGES.fullResume.prepaymentReceived);
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+    await ctx.reply(MESSAGES.common.attachReceipt);
   },
   // Шаг 6: Ожидание выбора времени интервью
   async (ctx) => {
@@ -573,53 +605,60 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       orders[(ctx.session as any).orderId].interviewTime = ctx.message.text.trim();
       require('./index').scheduleInterviewReminders(orders[(ctx.session as any).orderId], require('./index').bot);
       // Уведомление админу о брони с временем
-      const adminMsg =
-        `🔔 НОВАЯ БРОНЬ №${(ctx.session as any).orderId}: Резюме под ключ\n-----------------\n` +
-        `Клиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\n` +
-        `Тариф: ${(ctx.session as any).tariff}\n` +
-        `Время интервью: ${(ctx.session as any).interviewTime}\n` +
-        `Старое резюме: ${(ctx.session as any).oldResumeFileName || '—'}\n` +
-        `Вакансия/должность: ${(ctx.session as any).vacancyUrl || '—'}\n` +
-        `Пожелания: ${(ctx.session as any).comment || '—'}\n` +
-        `Статус: ПРЕДОПЛАТА\n-----------------`;
+      const adminMsg = MESSAGES.fullResume.adminBookingNotification(
+        (ctx.session as any).orderId,
+        ctx.from?.first_name || '',
+        ctx.from?.username || '',
+        (ctx.session as any).userId,
+        (ctx.session as any).tariff,
+        (ctx.session as any).interviewTime,
+        (ctx.session as any).oldResumeFileName,
+        (ctx.session as any).vacancyUrl,
+        (ctx.session as any).comment
+      );
       await ctx.telegram.sendMessage(ADMIN_CHAT_ID, adminMsg);
       await sendAdminEmail(`Новая бронь №${(ctx.session as any).orderId}`, adminMsg);
-      await ctx.reply('Бот напомнит вам об интервью за 24 часа и за 1 час до начала. После интервью оплатите вторую часть.');
-      await ctx.reply('После интервью для завершения заказа оплатите вторую часть. Нажмите "✅ Оплатить вторую часть".');
-      await ctx.reply('✅ Оплатить вторую часть', Markup.keyboard([["✅ Оплатить вторую часть"]]).resize());
+      await ctx.reply(MESSAGES.fullResume.remindersScheduled);
+      await ctx.reply(MESSAGES.fullResume.paySecondPart);
+      await ctx.reply(MESSAGES.buttons.payFinal, Markup.keyboard([[MESSAGES.buttons.payFinal]]).resize());
       // Для теста: напоминания через setTimeout (в проде — cron или внешний сервис)
       // setTimeout(() => { ... }, msTo24hBefore)
       // setTimeout(() => { ... }, msTo1hBefore)
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, введите дату и время интервью (например: 2024-07-01 15:00).');
+    await ctx.reply(MESSAGES.common.enterInterviewTime);
   },
   // Шаг 7: Финальная оплата
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '✅ Оплатить вторую часть') {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payFinal) {
       const rest = Math.ceil((ctx.session as any).price / 2);
       await ctx.reply(
-        `Для завершения заказа оплатите вторую часть: ${rest} рублей.\n\n💳 Картой по номеру: [номер карты]\n📞 По номеру телефона (СБП): [номер телефона]\n\nПосле оплаты прикрепите чек.`,
+        MESSAGES.fullResume.finalPaymentInstructions(rest),
         Markup.keyboard([
-          ['📸 Я оплатил(а) и готов(а) прикрепить чек (финал)']
+          [MESSAGES.buttons.attachReceiptFinal]
         ]).resize()
       );
       return ctx.wizard.next();
     }
-    await ctx.reply('Пожалуйста, нажмите "Оплатить вторую часть".');
+    await ctx.reply(MESSAGES.common.paySecondPart);
   },
   // Шаг 8: Загрузка финального чека
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === '📸 Я оплатил(а) и готов(а) прикрепить чек (финал)') {
-      await ctx.reply('Пожалуйста, прикрепите скриншот или фото чека (jpg, jpeg, png).');
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceiptFinal) {
+      await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
       (ctx.session as any).finalReceiptFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-      await ctx.reply('Оплата получена, спасибо! Беру ваш заказ в работу. Готовое резюме будет у вас в течение 1 рабочего дня.', Markup.removeKeyboard());
+      await ctx.reply(MESSAGES.fullResume.orderCompleted, Markup.removeKeyboard());
       // Уведомление админу о полной оплате
-      const adminMsg =
-        `🔔 ОПЛАЧЕНО №${(ctx.session as any).orderId}: Резюме под ключ\n-----------------\nКлиент: ${ctx.from?.first_name} @${ctx.from?.username} (ID: ${(ctx.session as any).userId})\nТариф: ${(ctx.session as any).tariff}\nСтатус: ОПЛАЧЕНО\n-----------------`;
+      const adminMsg = MESSAGES.fullResume.adminPaymentNotification(
+        (ctx.session as any).orderId,
+        ctx.from?.first_name || '',
+        ctx.from?.username || '',
+        (ctx.session as any).userId,
+        (ctx.session as any).tariff
+      );
       await ctx.telegram.sendPhoto(
         ADMIN_CHAT_ID,
         (ctx.session as any).finalReceiptFileId,
@@ -640,7 +679,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       );
       return ctx.scene.leave();
     }
-    await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
+    await ctx.reply(MESSAGES.common.attachReceipt);
   }
 );
 
