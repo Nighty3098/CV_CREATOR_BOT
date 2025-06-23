@@ -1,5 +1,5 @@
 export function generateOrderId(): string {
-  return Math.random().toString(36).substr(2, 9).toUpperCase();
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export function isValidResumeFile(filename: string): boolean {

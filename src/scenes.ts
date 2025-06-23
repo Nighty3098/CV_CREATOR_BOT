@@ -62,7 +62,7 @@ mainMenuScene.hears(MESSAGES.buttons.exit, (ctx) => {
 // --- Сценарий "Пример резюме из базы" ---
 export const exampleScene = new Scenes.WizardScene<BotContext>(
   "exampleScene",
-  // Шаг 1: Описание услуги и запрос должности
+  // Шаг 1: Описание услуги и кнопки
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
@@ -87,11 +87,44 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
     } as Order;
     await ctx.reply(
       MESSAGES.exampleResume.description,
-      Markup.keyboard([[MESSAGES.buttons.editMainMenu]]).resize(),
+      Markup.keyboard([
+        ["✅ Да, я хочу Пример идеального резюме"],
+        [MESSAGES.buttons.editMainMenu],
+      ]).resize(),
     );
     return ctx.wizard.next();
   },
-  // Шаг 2: Получение должности
+  // Шаг 2: Обработка кнопок и запрос должности
+  async (ctx) => {
+    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
+      await ctx.scene.leave();
+      await ctx.scene.enter("mainMenu");
+      return;
+    }
+    if (
+      ctx.message &&
+      "text" in ctx.message &&
+      ctx.message.text === "✅ Да, я хочу Пример идеального резюме"
+    ) {
+      await ctx.reply(
+        MESSAGES.exampleResume.requestPosition,
+        Markup.keyboard([[MESSAGES.buttons.editMainMenu]]).resize(),
+      );
+      return ctx.wizard.next();
+    } else if (
+      ctx.message &&
+      "text" in ctx.message &&
+      ctx.message.text === MESSAGES.buttons.editMainMenu
+    ) {
+      await ctx.scene.leave();
+      await ctx.scene.enter("mainMenu");
+      return;
+    } else {
+      await ctx.reply("Пожалуйста, выберите действие с помощью кнопок ниже.");
+    }
+  },
+  // Шаг 3: Получение должности
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
@@ -135,7 +168,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       await ctx.reply(MESSAGES.common.enterPosition);
     }
   },
-  // Шаг 3: Выбор способа доставки
+  // Шаг 4: Выбор способа доставки
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
@@ -177,7 +210,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       return ctx.wizard.next();
     }
   },
-  // Шаг 4: Upsell
+  // Шаг 5: Upsell
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
@@ -223,7 +256,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       return ctx.wizard.next();
     }
   },
-  // Шаг 5: Подтверждение заказа
+  // Шаг 6: Подтверждение заказа
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
@@ -247,7 +280,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       }
     }
   },
-  // Шаг 6: Ожидание оплаты и загрузка чека
+  // Шаг 7: Ожидание оплаты и загрузка чека
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
