@@ -303,22 +303,52 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
   // Шаг 3: Сбор дополнительной информации (3 вопроса)
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).position = MESSAGES.common.no;
+        await ctx.reply(MESSAGES.reviewResume.enterVacancy,
+          Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+        );
+        return ctx.wizard.next();
+      }
       (ctx.session as any).position = ctx.message.text.trim();
-      await ctx.reply(MESSAGES.reviewResume.enterVacancy);
+      await ctx.reply(MESSAGES.reviewResume.enterVacancy,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
       return ctx.wizard.next();
     }
     await ctx.reply(MESSAGES.common.enterPositionPrompt);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).vacancyUrl = MESSAGES.common.no;
+        await ctx.reply(MESSAGES.reviewResume.enterComment,
+          Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+        );
+        return ctx.wizard.next();
+      }
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
-      await ctx.reply(MESSAGES.reviewResume.enterComment);
+      await ctx.reply(MESSAGES.reviewResume.enterComment,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
       return ctx.wizard.next();
     }
     await ctx.reply(MESSAGES.common.enterVacancy);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).comment = MESSAGES.common.no;
+        // upsell
+        await ctx.reply(
+          MESSAGES.reviewResume.upsell,
+          Markup.keyboard([
+            [MESSAGES.buttons.addExamples],
+            [MESSAGES.buttons.onlyReview]
+          ]).resize()
+        );
+        return ctx.wizard.next();
+      }
       (ctx.session as any).comment = ctx.message.text.trim();
       // upsell
       await ctx.reply(
@@ -512,7 +542,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
           [MESSAGES.buttons.back]
         ]).resize()
       );
-      return;
+      return ctx.wizard.next();
     }
     if (ctx.message && 'text' in ctx.message) {
       let tariff = '';
@@ -541,23 +571,55 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     if (ctx.message && 'document' in ctx.message) {
       (ctx.session as any).oldResumeFileId = ctx.message.document.file_id;
       (ctx.session as any).oldResumeFileName = ctx.message.document.file_name;
+      await ctx.reply(MESSAGES.fullResume.enterVacancy,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
+      return ctx.wizard.next();
     } else if (ctx.message && 'text' in ctx.message) {
       (ctx.session as any).oldResumeFileId = undefined;
       (ctx.session as any).oldResumeFileName = undefined;
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).oldResumeFileId = undefined;
+        (ctx.session as any).oldResumeFileName = undefined;
+      }
+      await ctx.reply(MESSAGES.fullResume.enterVacancy,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
+      return ctx.wizard.next();
     }
     await ctx.reply(MESSAGES.fullResume.enterVacancy);
-    return ctx.wizard.next();
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).vacancyUrl = MESSAGES.common.no;
+        await ctx.reply(MESSAGES.fullResume.enterWishes,
+          Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+        );
+        return ctx.wizard.next();
+      }
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
-      await ctx.reply(MESSAGES.fullResume.enterWishes);
+      await ctx.reply(MESSAGES.fullResume.enterWishes,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
       return ctx.wizard.next();
     }
     await ctx.reply(MESSAGES.common.enterVacancyOrPosition);
   },
   async (ctx) => {
     if (ctx.message && 'text' in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.skip) {
+        (ctx.session as any).comment = MESSAGES.common.no;
+        // Предоплата
+        const prepay = Math.floor((ctx.session as any).price / 2);
+        await ctx.reply(
+          MESSAGES.fullResume.prepaymentInfo(prepay),
+          Markup.keyboard([
+            [MESSAGES.buttons.payPrepayment]
+          ]).resize()
+        );
+        return ctx.wizard.next();
+      }
       (ctx.session as any).comment = ctx.message.text.trim();
       // Предоплата
       const prepay = Math.floor((ctx.session as any).price / 2);
