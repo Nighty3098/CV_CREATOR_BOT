@@ -65,6 +65,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 1: Описание услуги и кнопки
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (mainMenu)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -85,6 +86,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       createdAt: new Date(),
       delivery: "telegram",
     } as Order;
+    console.log(`[ORDER] Новый заказ: ${(ctx.session as any).orderId}, user: ${ctx.from?.id}, услуга: example`);
     await ctx.reply(
       MESSAGES.exampleResume.description,
       Markup.keyboard([
@@ -97,6 +99,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 2: Обработка кнопок и запрос должности
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -127,6 +130,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 3: Получение должности
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -171,6 +175,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 4: Выбор способа доставки
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -213,6 +218,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 5: Upsell
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -259,6 +265,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 6: Подтверждение заказа
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -283,6 +290,7 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   // Шаг 7: Ожидание оплаты и загрузка чека
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (exampleScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -426,6 +434,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text.startsWith("/")
     ) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (reviewScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -462,6 +471,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text.startsWith("/")
     ) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (reviewScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -528,6 +538,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text.startsWith("/")
     ) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (reviewScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -571,6 +582,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text.startsWith("/")
     ) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (reviewScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -610,6 +622,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text.startsWith("/")
     ) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (reviewScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -834,6 +847,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 1: Описание услуги
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -888,7 +902,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       typeof ctx.message === "object" &&
       "text" in ctx.message
     ) {
-      console.log("DEBUG: ctx.message.text:", ctx.message.text);
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} выбрал тариф (fullResumeScene)`);
       let tariff = "";
       let price = 0;
       if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
@@ -933,6 +947,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 3: Сбор информации
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -952,6 +967,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       return ctx.wizard.next();
     } else if (ctx.message && "text" in ctx.message) {
       if (isCommand(ctx.message.text)) {
+        console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
         await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
         await ctx.scene.leave();
         await ctx.scene.enter("mainMenu");
@@ -973,6 +989,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1008,6 +1025,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1069,6 +1087,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 4: Оплата предоплаты
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1141,6 +1160,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 5: Загрузка чека предоплаты
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1174,6 +1194,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 6: Ожидание выбора времени интервью
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1230,6 +1251,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 7: Финальная оплата
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
@@ -1305,6 +1327,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   // Шаг 8: Загрузка финального чека
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
+      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
       await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.");
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");

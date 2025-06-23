@@ -32,7 +32,7 @@ function getMainMenu() {
 }
 
 bot.start((ctx) => {
-  console.log("STARTED: ", ctx.from.username);
+  console.log(`[START] Пользователь ${ctx.from?.id} (${ctx.from?.username}) запустил бота`);
   ctx.reply(MESSAGES.welcome, getMainMenu());
 });
 
