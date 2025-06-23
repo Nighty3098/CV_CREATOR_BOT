@@ -254,6 +254,14 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
           }
         }
       );
+      // Отправляем файл резюме админу
+      if ((ctx.session as any).fileId) {
+        await ctx.telegram.sendDocument(
+          ADMIN_CHAT_ID,
+          (ctx.session as any).fileId,
+          { caption: `Файл резюме пользователя: ${(ctx.session as any).fileName}` }
+        );
+      }
       await sendAdminEmail(
         `Новый заказ №${(ctx.session as any).orderId}`,
         adminMsg
@@ -295,6 +303,14 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
             }
           }
         );
+        // Отправляем файл резюме админу
+        if ((ctx.session as any).fileId) {
+          await ctx.telegram.sendDocument(
+            ADMIN_CHAT_ID,
+            (ctx.session as any).fileId,
+            { caption: `Файл резюме пользователя: ${(ctx.session as any).fileName}` }
+          );
+        }
         await sendAdminEmail(
           `Новый заказ №${(ctx.session as any).orderId}`,
           adminMsg
@@ -578,6 +594,14 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
           }
         }
       );
+      // Отправляем файл резюме админу
+      if ((ctx.session as any).fileId) {
+        await ctx.telegram.sendDocument(
+          ADMIN_CHAT_ID,
+          (ctx.session as any).fileId,
+          { caption: `Файл резюме пользователя: ${(ctx.session as any).fileName}` }
+        );
+      }
       await sendAdminEmail(
         `Новый заказ №${(ctx.session as any).orderId}`,
         adminMsg
@@ -616,6 +640,14 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
             }
           }
         );
+        // Отправляем файл резюме админу
+        if ((ctx.session as any).fileId) {
+          await ctx.telegram.sendDocument(
+            ADMIN_CHAT_ID,
+            (ctx.session as any).fileId,
+            { caption: `Файл резюме пользователя: ${(ctx.session as any).fileName}` }
+          );
+        }
         await sendAdminEmail(
           `Новый заказ №${(ctx.session as any).orderId}`,
           adminMsg
