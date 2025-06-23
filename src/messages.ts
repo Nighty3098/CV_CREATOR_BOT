@@ -358,4 +358,6 @@ export const MESSAGES = {
     videoBody: "Ваш видеоразбор во вложении. Если возникнут вопросы — пишите!",
     commentSubject: "Комментарий к вашему заказу",
   },
-};
+} as const;
+
+export type MessagesType = typeof MESSAGES;

@@ -3,7 +3,7 @@
 import { Scenes, Markup } from 'telegraf';
 import { BotContext } from './bot.context';
 import { PRICES, PAYMENT_INFO, ADMIN_CHAT_ID } from './constants';
-import { isValidEmail, isValidImageFile, isValidResumeFile, generateOrderId } from './utils';
+import { isValidEmail, isValidImageFile, isValidResumeFile, generateOrderId, isCommand, isEmptyText, isTooLongText, isFileTooLarge, isSkipButton } from './utils';
 import { sendAdminEmail } from './email';
 import { orders } from './index';
 import { Order } from './types';
@@ -36,6 +36,12 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   'exampleScene',
   // Шаг 1: Описание услуги и запрос должности
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     (ctx.session as any).orderType = 'example';
     (ctx.session as any).orderId = generateOrderId();
     (ctx.session as any).upsell = false;
@@ -59,7 +65,21 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 2: Получение должности
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text !== MESSAGES.buttons.editMainMenu) {
+      if (isEmptyText(ctx.message.text)) {
+        await ctx.reply('Пожалуйста, введите корректное название должности.');
+        return;
+      }
+      if (isTooLongText(ctx.message.text)) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
+      }
       (ctx.session as any).position = ctx.message.text.trim();
       await ctx.reply(
         MESSAGES.exampleResume.deliveryChoice,
@@ -79,6 +99,12 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 3: Выбор способа доставки
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.telegramDelivery) {
         (ctx.session as any).delivery = 'telegram';
@@ -115,6 +141,12 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 4: Upsell
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
       if (ctx.message.text.startsWith('👍')) {
         (ctx.session as any).upsell = true;
@@ -142,6 +174,12 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 5: Подтверждение заказа
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.confirm) {
         await ctx.reply(
@@ -160,12 +198,22 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 6: Ожидание оплаты и загрузка чека
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceipt) {
       await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
       const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      if (isFileTooLarge(photo.file_size || 0, 50)) {
+        await ctx.reply('Файл слишком большой. Максимальный размер — 50 МБ.');
+        return;
+      }
       (ctx.session as any).receiptFileId = photo.file_id;
       await ctx.reply(
         MESSAGES.exampleResume.orderAccepted((ctx.session as any).orderId),
@@ -203,6 +251,10 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       return ctx.scene.leave();
     } else if (ctx.message && 'document' in ctx.message) {
       if (ctx.message.document && isValidImageFile(ctx.message.document.file_name || '')) {
+        if (isFileTooLarge(ctx.message.document.file_size || 0, 20)) {
+          await ctx.reply('Файл слишком большой. Максимальный размер — 20 МБ.');
+          return;
+        }
         (ctx.session as any).receiptFileId = ctx.message.document.file_id;
         await ctx.reply(
           MESSAGES.exampleResume.orderAccepted((ctx.session as any).orderId),
@@ -239,19 +291,25 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
         );
         return ctx.scene.leave();
       } else {
-        await ctx.reply(MESSAGES.common.attachReceipt);
+        await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
       }
     } else {
-      await ctx.reply(MESSAGES.common.attachReceipt);
+      await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).');
     }
   }
 );
 
-// Заглушки для wizard-сцен (будут реализованы далее)
+// --- Сценарий "Разбор-прожарка резюме" ---
 export const reviewScene = new Scenes.WizardScene<BotContext>(
   'reviewScene',
   // Шаг 1: Описание услуги
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/')) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     (ctx.session as any).orderType = 'review';
     (ctx.session as any).orderId = generateOrderId();
     (ctx.session as any).upsell = false;
@@ -278,6 +336,12 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 2: Загрузка файла
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/')) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
       await ctx.scene.leave();
       await ctx.scene.enter('mainMenu');
@@ -293,22 +357,54 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
         await ctx.reply(MESSAGES.reviewResume.invalidFile);
         return;
       }
+      if (ctx.message.document.file_size && ctx.message.document.file_size > 20 * 1024 * 1024) {
+        await ctx.reply('Файл слишком большой. Максимальный размер — 20 МБ.');
+        return;
+      }
       (ctx.session as any).fileId = ctx.message.document.file_id;
       (ctx.session as any).fileName = fileName;
-      await ctx.reply(MESSAGES.reviewResume.enterPosition);
+      await ctx.reply(MESSAGES.reviewResume.enterPosition,
+        Markup.removeKeyboard()
+      );
       return ctx.wizard.next();
+    }
+    if (ctx.message && 'photo' in ctx.message) {
+      await ctx.reply('Пожалуйста, отправьте файл резюме в формате .doc, .docx или .pdf, а не фото.');
+      return;
+    }
+    if (ctx.message && 'text' in ctx.message) {
+      if (!ctx.message.text.trim()) {
+        await ctx.reply('Пожалуйста, прикрепите файл с резюме.');
+        return;
+      }
+      await ctx.reply('Пожалуйста, прикрепите файл с резюме.');
+      return;
     }
     await ctx.reply(MESSAGES.common.attachFile);
   },
   // Шаг 3: Сбор дополнительной информации (3 вопроса)
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/')) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.skip) {
+      (ctx.session as any).position = MESSAGES.common.no;
+      await ctx.reply(MESSAGES.reviewResume.enterVacancy,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
+      return ctx.wizard.next();
+    }
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === MESSAGES.buttons.skip) {
-        (ctx.session as any).position = MESSAGES.common.no;
-        await ctx.reply(MESSAGES.reviewResume.enterVacancy,
-          Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
-        );
-        return ctx.wizard.next();
+      if (!ctx.message.text.trim()) {
+        await ctx.reply('Пожалуйста, введите должность.');
+        return;
+      }
+      if (ctx.message.text.length > 4096) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
       }
       (ctx.session as any).position = ctx.message.text.trim();
       await ctx.reply(MESSAGES.reviewResume.enterVacancy,
@@ -319,13 +415,23 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
     await ctx.reply(MESSAGES.common.enterPositionPrompt);
   },
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/')) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.skip) {
+      (ctx.session as any).vacancyUrl = MESSAGES.common.no;
+      await ctx.reply(MESSAGES.reviewResume.enterComment,
+        Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
+      );
+      return ctx.wizard.next();
+    }
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === MESSAGES.buttons.skip) {
-        (ctx.session as any).vacancyUrl = MESSAGES.common.no;
-        await ctx.reply(MESSAGES.reviewResume.enterComment,
-          Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
-        );
-        return ctx.wizard.next();
+      if (ctx.message.text.length > 4096) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
       }
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
       await ctx.reply(MESSAGES.reviewResume.enterComment,
@@ -336,18 +442,28 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
     await ctx.reply(MESSAGES.common.enterVacancy);
   },
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/')) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
+    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.skip) {
+      (ctx.session as any).comment = MESSAGES.common.no;
+      // upsell
+      await ctx.reply(
+        MESSAGES.reviewResume.upsell,
+        Markup.keyboard([
+          [MESSAGES.buttons.addExamples],
+          [MESSAGES.buttons.onlyReview]
+        ]).resize()
+      );
+      return ctx.wizard.next();
+    }
     if (ctx.message && 'text' in ctx.message) {
-      if (ctx.message.text === MESSAGES.buttons.skip) {
-        (ctx.session as any).comment = MESSAGES.common.no;
-        // upsell
-        await ctx.reply(
-          MESSAGES.reviewResume.upsell,
-          Markup.keyboard([
-            [MESSAGES.buttons.addExamples],
-            [MESSAGES.buttons.onlyReview]
-          ]).resize()
-        );
-        return ctx.wizard.next();
+      if (ctx.message.text.length > 4096) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
       }
       (ctx.session as any).comment = ctx.message.text.trim();
       // upsell
@@ -502,6 +618,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   'fullResumeScene',
   // Шаг 1: Описание услуги
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     (ctx.session as any).orderType = 'full';
     (ctx.session as any).orderId = generateOrderId();
     (ctx.session as any).userId = ctx.from?.id;
@@ -527,6 +649,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 2: Выбор тарифа
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
       await ctx.scene.leave();
       await ctx.scene.enter('mainMenu');
@@ -568,7 +696,17 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 3: Сбор информации
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'document' in ctx.message) {
+      if (isFileTooLarge(ctx.message.document.file_size || 0, 20)) {
+        await ctx.reply('Файл слишком большой. Максимальный размер — 20 МБ.');
+        return;
+      }
       (ctx.session as any).oldResumeFileId = ctx.message.document.file_id;
       (ctx.session as any).oldResumeFileName = ctx.message.document.file_name;
       await ctx.reply(MESSAGES.fullResume.enterVacancy,
@@ -576,6 +714,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       );
       return ctx.wizard.next();
     } else if (ctx.message && 'text' in ctx.message) {
+      if (isCommand(ctx.message.text)) {
+        await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+        await ctx.scene.leave();
+        await ctx.scene.enter('mainMenu');
+        return;
+      }
       (ctx.session as any).oldResumeFileId = undefined;
       (ctx.session as any).oldResumeFileName = undefined;
       if (ctx.message.text === MESSAGES.buttons.skip) {
@@ -590,6 +734,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     await ctx.reply(MESSAGES.fullResume.enterVacancy);
   },
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.skip) {
         (ctx.session as any).vacancyUrl = MESSAGES.common.no;
@@ -597,6 +747,14 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
           Markup.keyboard([[MESSAGES.buttons.skip]]).resize()
         );
         return ctx.wizard.next();
+      }
+      if (isEmptyText(ctx.message.text)) {
+        await ctx.reply('Пожалуйста, введите ссылку или название должности.');
+        return;
+      }
+      if (isTooLongText(ctx.message.text)) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
       }
       (ctx.session as any).vacancyUrl = ctx.message.text.trim();
       await ctx.reply(MESSAGES.fullResume.enterWishes,
@@ -607,6 +765,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     await ctx.reply(MESSAGES.common.enterVacancyOrPosition);
   },
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.skip) {
         (ctx.session as any).comment = MESSAGES.common.no;
@@ -619,6 +783,14 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
           ]).resize()
         );
         return ctx.wizard.next();
+      }
+      if (isEmptyText(ctx.message.text)) {
+        await ctx.reply('Пожалуйста, напишите пожелания или "нет".');
+        return;
+      }
+      if (isTooLongText(ctx.message.text)) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
       }
       (ctx.session as any).comment = ctx.message.text.trim();
       // Предоплата
@@ -635,6 +807,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 4: Оплата предоплаты
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payPrepayment) {
       const prepay = Math.floor((ctx.session as any).price / 2);
       await ctx.reply(
@@ -649,11 +827,21 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 5: Загрузка чека предоплаты
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceiptPrepay) {
       await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
+      if (isFileTooLarge(ctx.message.photo[ctx.message.photo.length - 1].file_size || 0, 50)) {
+        await ctx.reply('Файл слишком большой. Максимальный размер — 50 МБ.');
+        return;
+      }
       (ctx.session as any).prepayReceiptFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
       await ctx.reply(MESSAGES.fullResume.prepaymentReceived);
       return ctx.wizard.next();
@@ -662,7 +850,21 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 6: Ожидание выбора времени интервью
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message) {
+      if (isEmptyText(ctx.message.text)) {
+        await ctx.reply('Пожалуйста, введите дату и время интервью.');
+        return;
+      }
+      if (isTooLongText(ctx.message.text)) {
+        await ctx.reply('Слишком длинный текст. Пожалуйста, сократите до 4096 символов.');
+        return;
+      }
       (ctx.session as any).interviewTime = ctx.message.text.trim();
       orders[(ctx.session as any).orderId].interviewTime = ctx.message.text.trim();
       require('./index').scheduleInterviewReminders(orders[(ctx.session as any).orderId], require('./index').bot);
@@ -692,6 +894,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 7: Финальная оплата
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payFinal) {
       const rest = Math.ceil((ctx.session as any).price / 2);
       await ctx.reply(
@@ -706,11 +914,21 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 8: Загрузка финального чека
   async (ctx) => {
+    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
+      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
+      await ctx.scene.leave();
+      await ctx.scene.enter('mainMenu');
+      return;
+    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.attachReceiptFinal) {
       await ctx.reply(MESSAGES.exampleResume.attachReceipt);
       return;
     }
     if (ctx.message && 'photo' in ctx.message) {
+      if (isFileTooLarge(ctx.message.photo[ctx.message.photo.length - 1].file_size || 0, 50)) {
+        await ctx.reply('Файл слишком большой. Максимальный размер — 50 МБ.');
+        return;
+      }
       (ctx.session as any).finalReceiptFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
       await ctx.reply(MESSAGES.fullResume.orderCompleted, Markup.removeKeyboard());
       // Уведомление админу о полной оплате
