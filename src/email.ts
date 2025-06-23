@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer';
-import { ADMIN_EMAIL } from './constants';
+import nodemailer from "nodemailer";
+import { ADMIN_EMAIL } from "./constants";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -11,7 +11,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendAdminEmail(subject: string, text: string, attachments?: any[]) {
+export async function sendAdminEmail(
+  subject: string,
+  text: string,
+  attachments?: any[],
+) {
   await transporter.sendMail({
     from: process.env.SMTP_USER,
     to: ADMIN_EMAIL,
@@ -21,8 +25,15 @@ export async function sendAdminEmail(subject: string, text: string, attachments?
   });
 }
 
-export async function sendClientEmail(to: string, subject: string, text: string, attachments?: any[]) {
-  console.log(`[EMAIL] Попытка отправить письмо клиенту: to=${to}, subject=${subject}, attachments=${attachments?.length}`);
+export async function sendClientEmail(
+  to: string,
+  subject: string,
+  text: string,
+  attachments?: any[],
+) {
+  console.log(
+    `[EMAIL] Попытка отправить письмо клиенту: to=${to}, subject=${subject}, attachments=${attachments?.length}`,
+  );
   try {
     const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
@@ -31,9 +42,14 @@ export async function sendClientEmail(to: string, subject: string, text: string,
       text,
       attachments,
     });
-    console.log(`[EMAIL] Письмо клиенту отправлено: to=${to}, messageId=${info.messageId}`);
+    console.log(
+      `[EMAIL] Письмо клиенту отправлено: to=${to}, messageId=${info.messageId}`,
+    );
   } catch (e) {
-    console.error(`[EMAIL ERROR] Ошибка при отправке письма клиенту: to=${to}`, e);
+    console.error(
+      `[EMAIL ERROR] Ошибка при отправке письма клиенту: to=${to}`,
+      e,
+    );
     throw e;
   }
-} 
+}

@@ -1,4 +1,4 @@
-import { Scenes } from 'telegraf';
+import { Scenes } from "telegraf";
 
 export interface BotSession extends Scenes.WizardSessionData {
   orderId?: string;
@@ -6,4 +6,4 @@ export interface BotSession extends Scenes.WizardSessionData {
   [key: string]: any;
 }
 
-export interface BotContext extends Scenes.WizardContext<BotSession> {} 
+export interface BotContext extends Scenes.WizardContext<BotSession> {}

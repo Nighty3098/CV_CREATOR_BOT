@@ -15,7 +15,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 export function isCommand(text: string) {
-  return text.startsWith('/');
+  return text.startsWith("/");
 }
 
 export function isEmptyText(text: string) {
@@ -31,5 +31,5 @@ export function isFileTooLarge(fileSize: number, maxMB = 20) {
 }
 
 export function isSkipButton(text: string) {
-  return text === 'Пропустить';
-} 
+  return text === "Пропустить";
+}

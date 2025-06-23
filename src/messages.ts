@@ -1,4 +1,13 @@
-import { CARD_NUM, PHONE_NUM, PRICE_FULL_JUNIOR, PRICE_FULL_PRO, PRICE_FULL_LEAD, PRICE_EXAMPLE_VIDEO, PRICE_UPSELL_VIDEO, PRICE_UPSELL_EXAMPLES } from "./constants";
+import {
+  CARD_NUM,
+  PHONE_NUM,
+  PRICE_FULL_JUNIOR,
+  PRICE_FULL_PRO,
+  PRICE_FULL_LEAD,
+  PRICE_EXAMPLE_VIDEO,
+  PRICE_UPSELL_VIDEO,
+  PRICE_UPSELL_EXAMPLES,
+} from "./constants";
 
 // Все текстовые сообщения бота
 export const MESSAGES = {
@@ -28,7 +37,8 @@ export const MESSAGES = {
     attachReceiptFinal: "📸 Я оплатил(а) и готов(а) прикрепить чек (финал)",
     telegramDelivery: "✅ В этот чат в Telegram",
     emailDelivery: "📧 Отправить на E-mail",
-    addVideoAdvice: () => `👍 Да, добавить видео-совет (+${PRICE_UPSELL_VIDEO}₽)`,
+    addVideoAdvice: () =>
+      `👍 Да, добавить видео-совет (+${PRICE_UPSELL_VIDEO}₽)`,
     onlyExample: "Нет, спасибо, только пример",
     addExamples: () => `👍 Да, с примерами (+${PRICE_UPSELL_EXAMPLES}₽)`,
     onlyReview: "Нет, спасибо, только разбор",
@@ -66,14 +76,15 @@ export const MESSAGES = {
     enterEmail: "Пожалуйста, введите ваш email:",
     invalidEmail:
       "Пожалуйста, выберите способ доставки или введите корректный email.",
-    upsell: () => `Желаете получить дополнительный видео-комментарий в формате видеозаписи? Я расскажу что ОБЯЗАТЕЛЬНО должно быть в резюме на эту должность.\nСтоимость опции: +${PRICE_UPSELL_VIDEO}₽.`,
+    upsell: () =>
+      `Желаете получить дополнительный видео-комментарий в формате видеозаписи? Я расскажу что ОБЯЗАТЕЛЬНО должно быть в резюме на эту должность.\nСтоимость опции: +${PRICE_UPSELL_VIDEO}₽.`,
 
     orderSummary: (
       position: string,
       delivery: string,
       email: string,
       upsell: boolean,
-      price: number
+      price: number,
     ) =>
       `Ваш заказ:
 
@@ -109,7 +120,7 @@ export const MESSAGES = {
       delivery: string,
       email: string,
       upsell: boolean,
-      price: number
+      price: number,
     ) =>
       `🔔 НОВЫЙ ЗАКАЗ №${orderId}: Пример резюме
 -----------------
@@ -146,13 +157,14 @@ export const MESSAGES = {
     enterComment:
       "Есть ли что-то, на чем вы бы хотели, чтобы я сделал особый акцент при разборе? Если нет — пропустите.",
 
-    upsell: () => `Спасибо! Видео-разбор покажет ваши ошибки и точки роста. А хотите узнать не только "что исправить", но и "как исправить"?\n🔥 За +${PRICE_UPSELL_EXAMPLES}₽ я дополню разбор примерами идеальных формулировок из успешных резюме для вашей профессии.`,
+    upsell: () =>
+      `Спасибо! Видео-разбор покажет ваши ошибки и точки роста. А хотите узнать не только "что исправить", но и "как исправить"?\n🔥 За +${PRICE_UPSELL_EXAMPLES}₽ я дополню разбор примерами идеальных формулировок из успешных резюме для вашей профессии.`,
 
     orderSummary: (
       fileName: string,
       position: string,
       upsell: boolean,
-      price: number
+      price: number,
     ) =>
       `Ваш заказ:
 
@@ -165,7 +177,7 @@ export const MESSAGES = {
 Срок исполнения: 1 рабочий день
 
 Все верно?`,
-  
+
     orderAccepted: (orderId: string) =>
       `Спасибо, чек получен! Ваш заказ №${orderId} принят в работу.
 Я подготовлю видео-разбор и отправлю его вам сюда, в этот чат, в течение 1 рабочего дня.`,
@@ -180,7 +192,7 @@ export const MESSAGES = {
       vacancyUrl: string,
       comment: string,
       upsell: boolean,
-      price: number
+      price: number,
     ) =>
       `🔔 НОВЫЙ ЗАКАЗ №${orderId}: Разбор резюме
 -----------------
@@ -253,7 +265,7 @@ export const MESSAGES = {
       interviewTime: string,
       oldResumeFileName: string,
       vacancyUrl: string,
-      comment: string
+      comment: string,
     ) =>
       `🔔 НОВАЯ БРОНЬ №${orderId}: Резюме под ключ
 -----------------
@@ -271,7 +283,7 @@ export const MESSAGES = {
       firstName: string,
       username: string,
       userId: number,
-      tariff: string
+      tariff: string,
     ) =>
       `🔔 ОПЛАЧЕНО №${orderId}: Резюме под ключ
 -----------------
@@ -319,13 +331,13 @@ export const MESSAGES = {
     adminReminder24h: (
       username: string,
       userId: number,
-      interviewTime: string
+      interviewTime: string,
     ) =>
       `Напоминание: интервью с клиентом @${username} (${userId}) через 24 часа (${interviewTime}).`,
     adminReminder1h: (
       username: string,
       userId: number,
-      interviewTime: string
+      interviewTime: string,
     ) =>
       `Напоминание: интервью с клиентом @${username} (${userId}) через 1 час (${interviewTime}).`,
     interviewConfirmed: (eventTime: string) =>
@@ -334,7 +346,7 @@ export const MESSAGES = {
       username: string,
       userId: number,
       eventTime: string,
-      orderId: string
+      orderId: string,
     ) =>
       `Клиент @${username} (${userId}) забронировал интервью на ${eventTime} (заказ №${orderId}).`,
   },
@@ -344,8 +356,7 @@ export const MESSAGES = {
     fileReceived: (orderId: string) => `Ваш файл. ID заказа: ${orderId}`,
     videoReceived: (orderId: string) =>
       `Ваш видеоразбор. ID заказа: ${orderId}`,
-    fileComment:
-      "\n\Пожалуйста, сохраните файл себе на компьютер.",
+    fileComment: "\n\Пожалуйста, сохраните файл себе на компьютер.",
   },
 
   // Email сообщения
