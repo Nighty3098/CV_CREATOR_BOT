@@ -2,7 +2,10 @@
 
 import { Scenes, Markup } from 'telegraf';
 import { BotContext } from './bot.context';
-import { PRICES, PAYMENT_INFO, ADMIN_CHAT_ID } from './constants';
+import { PAYMENT_INFO, ADMIN_CHAT_ID, 
+  PRICE_EXAMPLE, PRICE_EXAMPLE_VIDEO, PRICE_REVIEW, PRICE_REVIEW_EXAMPLES, 
+  PRICE_FULL_JUNIOR, PRICE_FULL_PRO, PRICE_FULL_LEAD, 
+  PRICE_UPSELL_VIDEO, PRICE_UPSELL_EXAMPLES } from './constants';
 import { isValidEmail, isValidImageFile, isValidResumeFile, generateOrderId, isCommand, isEmptyText, isTooLongText, isFileTooLarge, isSkipButton } from './utils';
 import { sendAdminEmail } from './email';
 import { orders } from './index';
@@ -130,9 +133,9 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
       }
       // upsell
       await ctx.reply(
-        MESSAGES.exampleResume.upsell,
+        MESSAGES.exampleResume.upsell(),
         Markup.keyboard([
-          [MESSAGES.buttons.addVideoAdvice],
+          [MESSAGES.buttons.addVideoAdvice()],
           [MESSAGES.buttons.onlyExample]
         ]).resize()
       );
@@ -154,7 +157,14 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
         (ctx.session as any).upsell = false;
       }
       // Подтверждение заказа
-      const price = (ctx.session as any).upsell ? PRICES.exampleWithVideo : PRICES.example;
+      let price = (ctx.session as any).upsell 
+        ? PRICE_EXAMPLE + PRICE_UPSELL_VIDEO
+        : PRICE_EXAMPLE;
+      if (isNaN(price)) {
+        console.error('Ошибка: цена example не определена или не число', PRICE_EXAMPLE, PRICE_UPSELL_VIDEO);
+        await ctx.reply('Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
       (ctx.session as any).price = price;
       await ctx.reply(
         MESSAGES.exampleResume.orderSummary(
@@ -452,9 +462,9 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       (ctx.session as any).comment = MESSAGES.common.no;
       // upsell
       await ctx.reply(
-        MESSAGES.reviewResume.upsell,
+        MESSAGES.reviewResume.upsell(),
         Markup.keyboard([
-          [MESSAGES.buttons.addExamples],
+          [MESSAGES.buttons.addExamples()],
           [MESSAGES.buttons.onlyReview]
         ]).resize()
       );
@@ -468,9 +478,9 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       (ctx.session as any).comment = ctx.message.text.trim();
       // upsell
       await ctx.reply(
-        MESSAGES.reviewResume.upsell,
+        MESSAGES.reviewResume.upsell(),
         Markup.keyboard([
-          [MESSAGES.buttons.addExamples],
+          [MESSAGES.buttons.addExamples()],
           [MESSAGES.buttons.onlyReview]
         ]).resize()
       );
@@ -487,7 +497,14 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
         (ctx.session as any).upsell = false;
       }
       // Подтверждение заказа
-      const price = (ctx.session as any).upsell ? PRICES.reviewWithExamples : PRICES.review;
+      let price = (ctx.session as any).upsell 
+        ? PRICE_REVIEW + PRICE_UPSELL_EXAMPLES
+        : PRICE_REVIEW;
+      if (isNaN(price)) {
+        console.error('Ошибка: цена review не определена или не число', PRICE_REVIEW, PRICE_UPSELL_EXAMPLES);
+        await ctx.reply('Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
       (ctx.session as any).price = price;
       await ctx.reply(
         MESSAGES.reviewResume.orderSummary(
@@ -647,45 +664,45 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     );
     return ctx.wizard.next();
   },
-  // Шаг 2: Выбор тарифа
+  // Шаг выбора тарифа: обработка нажатия 'Выбрать тариф и начать'
   async (ctx) => {
-    if (ctx.message && 'text' in ctx.message && isCommand(ctx.message.text)) {
-      await ctx.reply('Вы начали новую команду. Возвращаю в главное меню.');
-      await ctx.scene.leave();
-      await ctx.scene.enter('mainMenu');
-      return;
-    }
-    if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
-      await ctx.scene.leave();
-      await ctx.scene.enter('mainMenu');
-      return;
-    }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.selectTariff) {
       await ctx.reply(
         MESSAGES.fullResume.tariffSelection,
         Markup.keyboard([
-          [MESSAGES.buttons.juniorTariff],
-          [MESSAGES.buttons.proTariff],
-          [MESSAGES.buttons.leadTariff],
+          [MESSAGES.buttons.juniorTariff()],
+          [MESSAGES.buttons.proTariff()],
+          [MESSAGES.buttons.leadTariff()],
           [MESSAGES.buttons.back]
         ]).resize()
       );
       return ctx.wizard.next();
     }
-    if (ctx.message && 'text' in ctx.message) {
+  },
+  // Следующий шаг: обработка выбора тарифа
+  async (ctx) => {
+    if (ctx.message && typeof ctx.message === 'object' && 'text' in ctx.message) {
+      console.log('DEBUG: ctx.message.text:', ctx.message.text);
       let tariff = '';
       let price = 0;
-      if (ctx.message.text.startsWith('Резюме "Исполнитель"')) {
-        tariff = 'junior'; price = PRICES.full.junior;
-      } else if (ctx.message.text.startsWith('Резюме "Профи"')) {
-        tariff = 'pro'; price = PRICES.full.pro;
-      } else if (ctx.message.text.startsWith('Резюме "Руководитель"')) {
-        tariff = 'lead'; price = PRICES.full.lead;
+      if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
+        tariff = 'junior'; price = PRICE_FULL_JUNIOR;
+      } else if (ctx.message.text === MESSAGES.buttons.proTariff()) {
+        tariff = 'pro'; price = PRICE_FULL_PRO;
+      } else if (ctx.message.text === MESSAGES.buttons.leadTariff()) {
+        tariff = 'lead'; price = PRICE_FULL_LEAD;
       } else if (ctx.message.text === MESSAGES.buttons.back) {
         await ctx.scene.reenter();
         return;
       } else {
+        console.log('DEBUG: не совпало ни с одним тарифом, текст:', ctx.message.text);
         await ctx.reply(MESSAGES.common.selectTariff);
+        return;
+      }
+      console.log('DEBUG: выбран тариф:', tariff, 'цена:', price);
+      if (isNaN(price)) {
+        console.error('Ошибка: цена тарифа не определена или не число', tariff, price);
+        await ctx.reply('Ошибка: цена тарифа не задана. Пожалуйста, обратитесь к администратору.');
         return;
       }
       (ctx.session as any).tariff = tariff;
@@ -693,6 +710,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       await ctx.reply(MESSAGES.fullResume.attachOldResume);
       return ctx.wizard.next();
     }
+    await ctx.reply(MESSAGES.common.selectTariff);
   },
   // Шаг 3: Сбор информации
   async (ctx) => {
@@ -775,7 +793,13 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       if (ctx.message.text === MESSAGES.buttons.skip) {
         (ctx.session as any).comment = MESSAGES.common.no;
         // Предоплата
+        console.log((ctx.session as any).price);
         const prepay = Math.floor((ctx.session as any).price / 2);
+        if (isNaN(prepay)) {
+          console.error('Ошибка: предоплата не определена или не число', (ctx.session as any).price);
+          await ctx.reply('Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.');
+          return;
+        }
         await ctx.reply(
           MESSAGES.fullResume.prepaymentInfo(prepay),
           Markup.keyboard([
@@ -795,6 +819,11 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       (ctx.session as any).comment = ctx.message.text.trim();
       // Предоплата
       const prepay = Math.floor((ctx.session as any).price / 2);
+      if (isNaN(prepay)) {
+        console.error('Ошибка: предоплата не определена или не число', (ctx.session as any).price);
+        await ctx.reply('Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
       await ctx.reply(
         MESSAGES.fullResume.prepaymentInfo(prepay),
         Markup.keyboard([
@@ -814,7 +843,37 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       return;
     }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payPrepayment) {
-      const prepay = Math.floor((ctx.session as any).price / 2);
+      // Пересчитываем цену перед расчётом предоплаты
+      let price = (ctx.session as any).price;
+      let tariff = (ctx.session as any).tariff;
+      console.log('DEBUG: tariff:', tariff, 'price:', price, 'upsell:', (ctx.session as any).upsell);
+      if (!tariff || !['junior', 'pro', 'lead'].includes(tariff)) {
+        console.error('Ошибка: тариф не выбран или невалиден', tariff);
+        await ctx.reply('Ошибка: тариф не выбран. Пожалуйста, начните заказ заново и выберите тариф.');
+        return;
+      }
+      if (typeof price !== 'number' || isNaN(price)) {
+        // Пересчёт для fullResumeScene
+        if (tariff === 'junior') price = PRICE_FULL_JUNIOR;
+        else if (tariff === 'pro') price = PRICE_FULL_PRO;
+        else if (tariff === 'lead') price = PRICE_FULL_LEAD;
+        // Можно добавить доп. опции, если они есть
+        if ((ctx.session as any).upsell && typeof PRICE_UPSELL_VIDEO === 'number') {
+          price += PRICE_UPSELL_VIDEO;
+        }
+      }
+      if (typeof price !== 'number' || isNaN(price)) {
+        console.error('Ошибка: цена не определена даже после пересчёта', tariff, price);
+        await ctx.reply('Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
+      (ctx.session as any).price = price;
+      const prepay = Math.floor(price / 2);
+      if (isNaN(prepay)) {
+        console.error('Ошибка: предоплата не определена или не число', price);
+        await ctx.reply('Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
       await ctx.reply(
         MESSAGES.fullResume.prepaymentInstructions(prepay),
         Markup.keyboard([
@@ -901,7 +960,37 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       return;
     }
     if (ctx.message && 'text' in ctx.message && ctx.message.text === MESSAGES.buttons.payFinal) {
-      const rest = Math.ceil((ctx.session as any).price / 2);
+      // Пересчитываем цену перед расчётом финальной оплаты
+      let price = (ctx.session as any).price;
+      let tariff = (ctx.session as any).tariff;
+      console.log('DEBUG (final payment): tariff:', tariff, 'price:', price, 'upsell:', (ctx.session as any).upsell);
+      if (!tariff || !['junior', 'pro', 'lead'].includes(tariff)) {
+        console.error('Ошибка: тариф не выбран или невалиден (финал)', tariff);
+        await ctx.reply('Ошибка: тариф не выбран. Пожалуйста, начните заказ заново и выберите тариф.');
+        return;
+      }
+      if (typeof price !== 'number' || isNaN(price)) {
+        // Пересчёт для fullResumeScene
+        if (tariff === 'junior') price = PRICE_FULL_JUNIOR;
+        else if (tariff === 'pro') price = PRICE_FULL_PRO;
+        else if (tariff === 'lead') price = PRICE_FULL_LEAD;
+        // Можно добавить доп. опции, если они есть
+        if ((ctx.session as any).upsell && typeof PRICE_UPSELL_VIDEO === 'number') {
+          price += PRICE_UPSELL_VIDEO;
+        }
+      }
+      if (typeof price !== 'number' || isNaN(price)) {
+        console.error('Ошибка: цена не определена даже после пересчёта (финал)', tariff, price);
+        await ctx.reply('Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
+      (ctx.session as any).price = price;
+      const rest = Math.ceil(price / 2);
+      if (isNaN(rest)) {
+        console.error('Ошибка: сумма финальной оплаты не определена или не число', price);
+        await ctx.reply('Ошибка: сумма финальной оплаты не задана. Пожалуйста, обратитесь к администратору.');
+        return;
+      }
       await ctx.reply(
         MESSAGES.fullResume.finalPaymentInstructions(rest),
         Markup.keyboard([
