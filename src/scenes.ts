@@ -921,9 +921,9 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       await ctx.reply(
         MESSAGES.fullResume.tariffSelection,
         { ...Markup.keyboard([
-          [MESSAGES.buttons.juniorTariff()],
-          [MESSAGES.buttons.proTariff()],
-          [MESSAGES.buttons.leadTariff()],
+          [MESSAGES.buttons.juniorTariff(), MESSAGES.buttons.infoJunior],
+          [MESSAGES.buttons.proTariff(), MESSAGES.buttons.infoPro],
+          [MESSAGES.buttons.leadTariff(), MESSAGES.buttons.infoLead],
           [MESSAGES.buttons.back],
         ]).resize(), parse_mode: 'HTML' }
       );
@@ -934,16 +934,93 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       await ctx.scene.enter("mainMenu");
       return;
     }
+    // Обработка кнопок информации о тарифах
+    if (ctx.message && "text" in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.infoJunior) {
+        await ctx.reply(
+          MESSAGES.fullResume.juniorInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.infoPro) {
+        await ctx.reply(
+          MESSAGES.fullResume.proInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.infoLead) {
+        await ctx.reply(
+          MESSAGES.fullResume.leadInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.closeTariffInfo) {
+        await ctx.reply(
+          MESSAGES.fullResume.tariffSelection,
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.juniorTariff(), MESSAGES.buttons.infoJunior],
+            [MESSAGES.buttons.proTariff(), MESSAGES.buttons.infoPro],
+            [MESSAGES.buttons.leadTariff(), MESSAGES.buttons.infoLead],
+            [MESSAGES.buttons.back],
+          ]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor - 1);
+        return;
+      }
+    }
   },
   // Шаг 3.1: Вопрос 1 — старое резюме
   async (ctx) => {
-    if (
-      ctx.message &&
-      typeof ctx.message === "object" &&
-      "text" in ctx.message
-    ) {
+    // Обработка info-кнопок и closeTariffInfo (в начало шага)
+    if (ctx.message && "text" in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.infoJunior) {
+        await ctx.reply(
+          MESSAGES.fullResume.juniorInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.infoPro) {
+        await ctx.reply(
+          MESSAGES.fullResume.proInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.infoLead) {
+        await ctx.reply(
+          MESSAGES.fullResume.leadInfo,
+          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.closeTariffInfo) {
+        await ctx.reply(
+          MESSAGES.fullResume.tariffSelection,
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.juniorTariff(), MESSAGES.buttons.infoJunior],
+            [MESSAGES.buttons.proTariff(), MESSAGES.buttons.infoPro],
+            [MESSAGES.buttons.leadTariff(), MESSAGES.buttons.infoLead],
+            [MESSAGES.buttons.back],
+          ]).resize(), parse_mode: 'HTML' }
+        );
+        ctx.wizard.selectStep(ctx.wizard.cursor - 1);
+        return;
+      }
+
+      // Обработка выбора тарифа
       let tariff = "";
       let price = 0;
+      
       if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
         tariff = "junior";
         price = PRICE_FULL_JUNIOR;
@@ -960,8 +1037,12 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
         return;
       }
+
+      // Сохраняем выбранный тариф и цену
       (ctx.session as any).tariff = tariff;
       (ctx.session as any).price = price;
+
+      // Переходим к следующему шагу
       await ctx.reply(
         'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
         { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
@@ -1016,7 +1097,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && ctx.message.text === "Я готов получить ссылку на календарь") {
       await ctx.reply(
-        '1. Выберите время в календаре по ссылке\n2. оплатите встречу\n3. сделайте скриншот покупки\n\nhttps://your-calendar-link.com',
+        '1. Выберите время в календаре по ссылке\n2. оплатите встречу\n3. сделайте скриншот покупки\n\nhttps://planerka.app/andrey-gunyavin',
         { ...Markup.keyboard([["📸 Я записался(ась)"]]).resize(), parse_mode: 'HTML' }
       );
       return ctx.wizard.next();
