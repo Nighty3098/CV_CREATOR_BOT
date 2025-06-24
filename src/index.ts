@@ -33,7 +33,7 @@ function getMainMenu() {
 
 bot.start((ctx) => {
   console.log(`[START] Пользователь ${ctx.from?.id} (${ctx.from?.username}) запустил бота`);
-  ctx.reply(MESSAGES.welcome, getMainMenu());
+  ctx.reply(MESSAGES.welcome, { ...getMainMenu(), parse_mode: 'HTML' });
 });
 
 bot.hears(MESSAGES.buttons.workWithResume, (ctx) =>
@@ -61,6 +61,12 @@ bot.on("callback_query", async (ctx) => {
     const callbackQuery = ctx.callbackQuery as any;
     const data = callbackQuery?.data;
     if (!data) return;
+    if (data === 'go_main_menu') {
+      await ctx.answerCbQuery();
+      if (ctx.scene && ctx.scene.leave) await ctx.scene.leave();
+      await ctx.reply(MESSAGES.welcome, { ...getMainMenu(), parse_mode: 'HTML' });
+      return;
+    }
     if (data.startsWith("send_result_")) {
       // Только для админа
       if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
