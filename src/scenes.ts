@@ -501,7 +501,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
       "text" in ctx.message &&
       ctx.message.text === MESSAGES.buttons.startReview
     ) {
-      await ctx.reply(MESSAGES.reviewResume.attachFile, { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.reviewResume.attachFile, Markup.removeKeyboard());
       return;
     }
     if (ctx.message && "document" in ctx.message) {
@@ -861,7 +861,10 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
         );
         return ctx.scene.leave();
       } else {
-        await ctx.reply(MESSAGES.common.attachReceipt, { parse_mode: 'HTML' });
+        await ctx.reply(
+          "Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).",
+          { parse_mode: 'HTML' }
+        );
       }
     } else {
       await ctx.reply(MESSAGES.common.attachReceipt, { parse_mode: 'HTML' });
@@ -872,7 +875,7 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
 // Заглушки для wizard-сцен (будут реализованы далее)
 export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   "fullResumeScene",
-  // Шаг 1: Описание услуги
+  // Шаг 1: Описание услуги и выбор тарифа
   async (ctx) => {
     if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
       console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
@@ -882,7 +885,6 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       return;
     }
     if (ctx.message && "text" in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} нажал 'Назад в меню' (fullResumeScene)`);
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
       return;
@@ -890,7 +892,6 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     (ctx.session as any).orderType = "full";
     (ctx.session as any).orderId = generateOrderId();
     (ctx.session as any).userId = ctx.from?.id;
-    // Сохраняем заказ
     orders[(ctx.session as any).orderId] = {
       id: (ctx.session as any).orderId,
       userId: ctx.from?.id!,
@@ -910,7 +911,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     );
     return ctx.wizard.next();
   },
-  // Шаг выбора тарифа: обработка нажатия 'Выбрать тариф и начать'
+  // Шаг 2: Выбор тарифа
   async (ctx) => {
     if (
       ctx.message &&
@@ -929,20 +930,18 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       return ctx.wizard.next();
     }
     if (ctx.message && "text" in ctx.message && ctx.message.text === MESSAGES.buttons.backToMenu) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} нажал 'Назад в меню' (fullResumeScene, шаг 2)`);
       await ctx.scene.leave();
       await ctx.scene.enter("mainMenu");
       return;
     }
   },
-  // Следующий шаг: обработка выбора тарифа
+  // Шаг 3.1: Вопрос 1 — старое резюме
   async (ctx) => {
     if (
       ctx.message &&
       typeof ctx.message === "object" &&
       "text" in ctx.message
     ) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} выбрал тариф (fullResumeScene)`);
       let tariff = "";
       let price = 0;
       if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
@@ -958,489 +957,143 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         await ctx.scene.reenter();
         return;
       } else {
-        console.log(
-          "DEBUG: не совпало ни с одним тарифом, текст:",
-          ctx.message.text,
-        );
         await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
-        return;
-      }
-      console.log("DEBUG: выбран тариф:", tariff, "цена:", price);
-      if (isNaN(price)) {
-        console.error(
-          "Ошибка: цена тарифа не определена или не число",
-          tariff,
-          price,
-        );
-        await ctx.reply(
-          "Ошибка: цена тарифа не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
         return;
       }
       (ctx.session as any).tariff = tariff;
       (ctx.session as any).price = price;
-      await ctx.reply(MESSAGES.fullResume.attachOldResume, { parse_mode: 'HTML' });
+      await ctx.reply(
+        'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+        { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+      );
       return ctx.wizard.next();
     }
     await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
   },
-  // Шаг 3: Сбор информации
+  // Шаг 3.2: Вопрос 2 — вакансия/должность
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
     if (ctx.message && "document" in ctx.message) {
-      if (isFileTooLarge(ctx.message.document.file_size || 0, 20)) {
-        await ctx.reply("Файл слишком большой. Максимальный размер — 20 МБ.", { parse_mode: 'HTML' });
-        return;
-      }
       (ctx.session as any).oldResumeFileId = ctx.message.document.file_id;
       (ctx.session as any).oldResumeFileName = ctx.message.document.file_name;
-      await ctx.reply(
-        MESSAGES.fullResume.enterVacancy,
-        { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
-      );
-      return ctx.wizard.next();
     } else if (ctx.message && "text" in ctx.message) {
-      if (isCommand(ctx.message.text)) {
-        console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-        await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-        await ctx.scene.leave();
-        await ctx.scene.enter("mainMenu");
-        return;
-      }
-      (ctx.session as any).oldResumeFileId = undefined;
-      (ctx.session as any).oldResumeFileName = undefined;
       if (ctx.message.text === MESSAGES.buttons.skip) {
         (ctx.session as any).oldResumeFileId = undefined;
         (ctx.session as any).oldResumeFileName = undefined;
+      } else {
+        (ctx.session as any).oldResumeFileId = undefined;
+        (ctx.session as any).oldResumeFileName = undefined;
       }
-      await ctx.reply(
-        MESSAGES.fullResume.enterVacancy,
-        { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
-      );
-      return ctx.wizard.next();
     }
-    await ctx.reply(MESSAGES.fullResume.enterVacancy, { parse_mode: 'HTML' });
+    await ctx.reply(
+      'Укажите ссылку на желаемую вакансию или название должности, на которую претендуете.',
+      { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+    );
+    return ctx.wizard.next();
   },
+  // Шаг 3.3: Вопрос 3 — пожелания
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
     if (ctx.message && "text" in ctx.message) {
-      if (ctx.message.text === MESSAGES.buttons.skip) {
-        (ctx.session as any).vacancyUrl = MESSAGES.common.no;
-        await ctx.reply(
-          MESSAGES.fullResume.enterWishes,
-          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
-        );
-        return ctx.wizard.next();
-      }
-      if (isEmptyText(ctx.message.text)) {
-        await ctx.reply("Пожалуйста, введите ссылку или название должности.", { parse_mode: 'HTML' });
-        return;
-      }
-      if (isTooLongText(ctx.message.text)) {
-        await ctx.reply(
-          "Слишком длинный текст. Пожалуйста, сократите до 4096 символов.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      (ctx.session as any).vacancyUrl = ctx.message.text.trim();
-      await ctx.reply(
-        MESSAGES.fullResume.enterWishes,
-        { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
-      );
-      return ctx.wizard.next();
+      (ctx.session as any).vacancyUrl = ctx.message.text === MESSAGES.buttons.skip ? undefined : ctx.message.text.trim();
     }
-    await ctx.reply(MESSAGES.common.enterVacancyOrPosition, { parse_mode: 'HTML' });
+    await ctx.reply(
+      'Если есть дополнительные пожелания к будущему резюме, напишите их здесь. Если нет — нажмите пропустить.',
+      { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+    );
+    return ctx.wizard.next();
   },
+  // Шаг 4: Блок с календарём и оплатой
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
     if (ctx.message && "text" in ctx.message) {
-      if (ctx.message.text === MESSAGES.buttons.skip) {
-        (ctx.session as any).comment = MESSAGES.common.no;
-        // Предоплата
-        console.log((ctx.session as any).price);
-        const prepay = Math.floor((ctx.session as any).price / 2);
-        if (isNaN(prepay)) {
-          console.error(
-            "Ошибка: предоплата не определена или не число",
-            (ctx.session as any).price,
-          );
-          await ctx.reply(
-            "Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.",
-            { parse_mode: 'HTML' }
-          );
-          return;
-        }
-        await ctx.reply(
-          MESSAGES.fullResume.prepaymentInfo(prepay),
-          { ...Markup.keyboard([[MESSAGES.buttons.payPrepayment]]).resize(), parse_mode: 'HTML' }
-        );
-        return ctx.wizard.next();
-      }
-      if (isEmptyText(ctx.message.text)) {
-        await ctx.reply('Пожалуйста, напишите пожелания или "нет".', { parse_mode: 'HTML' });
-        return;
-      }
-      if (isTooLongText(ctx.message.text)) {
-        await ctx.reply(
-          "Слишком длинный текст. Пожалуйста, сократите до 4096 символов.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      (ctx.session as any).comment = ctx.message.text.trim();
-      // Предоплата
-      const prepay = Math.floor((ctx.session as any).price / 2);
-      if (isNaN(prepay)) {
-        console.error(
-          "Ошибка: предоплата не определена или не число",
-          (ctx.session as any).price,
-        );
-        await ctx.reply(
-          "Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
+      (ctx.session as any).comment = ctx.message.text === MESSAGES.buttons.skip ? undefined : ctx.message.text.trim();
+    }
+    await ctx.reply(
+      'Спасибо! Следующий шаг — часовое онлайн интервью.\nВ ходе интервью я соберу всю необходимую информацию и раскрою ваш опыт.\n\nВыберите время в календаре по ссылке и внесите оплату\n\n❗️Важно: Интервью начинается строго в назначенное время и не переносится. Предоплата за бронирование не возвращается в случае вашей неявки.',
+      { ...Markup.keyboard([["Я готов получить ссылку на календарь"]]).resize(), parse_mode: 'HTML' }
+    );
+    return ctx.wizard.next();
+  },
+  // Шаг 5: Запись на интервью
+  async (ctx) => {
+    if (ctx.message && "text" in ctx.message && ctx.message.text === "Я готов получить ссылку на календарь") {
       await ctx.reply(
-        MESSAGES.fullResume.prepaymentInfo(prepay),
-        { ...Markup.keyboard([[MESSAGES.buttons.payPrepayment]]).resize(), parse_mode: 'HTML' }
+        '1. Выберите время в календаре по ссылке\n2. оплатите встречу\n3. сделайте скриншот покупки\n\nhttps://your-calendar-link.com',
+        { ...Markup.keyboard([["📸 Я записался(ась)"]]).resize(), parse_mode: 'HTML' }
       );
       return ctx.wizard.next();
     }
-    await ctx.reply(MESSAGES.common.enterWishes, { parse_mode: 'HTML' });
+    await ctx.reply('Пожалуйста, нажмите кнопку ниже, чтобы получить ссылку на календарь.', { ...Markup.keyboard([["Я готов получить ссылку на календарь"]]).resize(), parse_mode: 'HTML' });
   },
-  // Шаг 4: Оплата предоплаты
+  // Шаг 6: Подтверждение времени
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
-    if (
-      ctx.message &&
-      "text" in ctx.message &&
-      ctx.message.text === MESSAGES.buttons.payPrepayment
-    ) {
-      // Пересчитываем цену перед расчётом предоплаты
-      let price = (ctx.session as any).price;
-      let tariff = (ctx.session as any).tariff;
-      console.log(
-        "DEBUG: tariff:",
-        tariff,
-        "price:",
-        price,
-        "upsell:",
-        (ctx.session as any).upsell,
-      );
-      if (!tariff || !["junior", "pro", "lead"].includes(tariff)) {
-        console.error("Ошибка: тариф не выбран или невалиден", tariff);
-        await ctx.reply(
-          "Ошибка: тариф не выбран. Пожалуйста, начните заказ заново и выберите тариф.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      if (typeof price !== "number" || isNaN(price)) {
-        // Пересчёт для fullResumeScene
-        if (tariff === "junior") price = PRICE_FULL_JUNIOR;
-        else if (tariff === "pro") price = PRICE_FULL_PRO;
-        else if (tariff === "lead") price = PRICE_FULL_LEAD;
-        // Можно добавить доп. опции, если они есть
-        if (
-          (ctx.session as any).upsell &&
-          typeof PRICE_UPSELL_VIDEO === "number"
-        ) {
-          price += PRICE_UPSELL_VIDEO;
-        }
-      }
-      if (typeof price !== "number" || isNaN(price)) {
-        console.error(
-          "Ошибка: цена не определена даже после пересчёта",
-          tariff,
-          price,
-        );
-        await ctx.reply(
-          "Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      (ctx.session as any).price = price;
-      const prepay = Math.floor(price / 2);
-      if (isNaN(prepay)) {
-        console.error("Ошибка: предоплата не определена или не число", price);
-        await ctx.reply(
-          "Ошибка: сумма предоплаты не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
+    if (ctx.message && "text" in ctx.message && ctx.message.text === "📸 Я записался(ась)") {
       await ctx.reply(
-        MESSAGES.fullResume.prepaymentInstructions(prepay),
-        { ...Markup.keyboard([[MESSAGES.buttons.attachReceiptPrepay]]).resize(), parse_mode: 'HTML' }
+        'Супер! Укажите, пожалуйста, день и время, на которое вы записались.\nЭто нужно для синхронизации данных между календарем и ботом',
+        { parse_mode: 'HTML', ...Markup.removeKeyboard() }
       );
       return ctx.wizard.next();
     }
-    await ctx.reply(MESSAGES.common.payPrepayment, { parse_mode: 'HTML' });
+    await ctx.reply('Пожалуйста, нажмите кнопку ниже, когда запишетесь.', { ...Markup.keyboard([["📸 Я записался(ась)"]]).resize(), parse_mode: 'HTML' });
   },
-  // Шаг 5: Загрузка чека предоплаты
+  // Шаг 7: Ожидание времени и загрузка чека
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
-    if (
-      ctx.message &&
-      "text" in ctx.message &&
-      ctx.message.text === MESSAGES.buttons.attachReceiptPrepay
-    ) {
-      await ctx.reply(MESSAGES.exampleResume.attachReceipt, { parse_mode: 'HTML' });
-      return;
-    }
-    if (ctx.message && "photo" in ctx.message) {
-      if (
-        isFileTooLarge(
-          ctx.message.photo[ctx.message.photo.length - 1].file_size || 0,
-          50,
-        )
-      ) {
-        await ctx.reply("Файл слишком большой. Максимальный размер — 50 МБ.", { parse_mode: 'HTML' });
-        return;
-      }
-      (ctx.session as any).prepayReceiptFileId =
-        ctx.message.photo[ctx.message.photo.length - 1].file_id;
-      await ctx.reply(MESSAGES.fullResume.prepaymentReceived, { parse_mode: 'HTML' });
-      return ctx.wizard.next();
-    }
-    await ctx.reply(MESSAGES.common.attachReceipt, { parse_mode: 'HTML' });
-  },
-  // Шаг 6: Ожидание выбора времени интервью
-  async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
     if (ctx.message && "text" in ctx.message) {
-      if (isEmptyText(ctx.message.text)) {
-        await ctx.reply("Пожалуйста, введите дату и время интервью.", { parse_mode: 'HTML' });
-        return;
-      }
-      if (isTooLongText(ctx.message.text)) {
-        await ctx.reply(
-          "Слишком длинный текст. Пожалуйста, сократите до 4096 символов.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
       (ctx.session as any).interviewTime = ctx.message.text.trim();
-      orders[(ctx.session as any).orderId].interviewTime =
-        ctx.message.text.trim();
-      require("./index").scheduleInterviewReminders(
-        orders[(ctx.session as any).orderId],
-        require("./index").bot,
-      );
-      // Уведомление админу о брони с временем
-      const adminMsg = MESSAGES.fullResume.adminBookingNotification(
-        (ctx.session as any).orderId,
-        ctx.from?.first_name || "",
-        ctx.from?.username || "",
-        (ctx.session as any).userId,
-        (ctx.session as any).tariff,
-        (ctx.session as any).interviewTime,
-        (ctx.session as any).oldResumeFileName,
-        (ctx.session as any).vacancyUrl,
-        (ctx.session as any).comment,
-      );
-      await ctx.telegram.sendMessage(ADMIN_CHAT_ID, adminMsg);
-      await sendAdminEmail(
-        `Новая бронь №${(ctx.session as any).orderId}`,
-        adminMsg,
-      );
-      await ctx.reply(MESSAGES.fullResume.remindersScheduled, { parse_mode: 'HTML' });
-      await ctx.reply(MESSAGES.fullResume.paySecondPart, { parse_mode: 'HTML' });
-      await ctx.reply(
-        MESSAGES.buttons.payFinal,
-        { ...Markup.keyboard([[MESSAGES.buttons.payFinal]]).resize(), parse_mode: 'HTML' }
-      );
-      // Для теста: напоминания через setTimeout (в проде — cron или внешний сервис)
-      // setTimeout(() => { ... }, msTo24hBefore)
-      // setTimeout(() => { ... }, msTo1hBefore)
+      await ctx.reply('Завершающий шаг. Прикрепите, пожалуйста, скриншот или фото чека', { parse_mode: 'HTML' });
       return ctx.wizard.next();
     }
-    await ctx.reply(MESSAGES.common.enterInterviewTime, { parse_mode: 'HTML' });
+    await ctx.reply('Пожалуйста, укажите дату и время вашей записи.', { parse_mode: 'HTML' });
   },
-  // Шаг 7: Финальная оплата
+  // Шаг 8: Ожидание файла (только изображение)
   async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
-    if (
-      ctx.message &&
-      "text" in ctx.message &&
-      ctx.message.text === MESSAGES.buttons.payFinal
-    ) {
-      // Пересчитываем цену перед расчётом финальной оплаты
-      let price = (ctx.session as any).price;
-      let tariff = (ctx.session as any).tariff;
-      console.log(
-        "DEBUG (final payment): tariff:",
-        tariff,
-        "price:",
-        price,
-        "upsell:",
-        (ctx.session as any).upsell,
-      );
-      if (!tariff || !["junior", "pro", "lead"].includes(tariff)) {
-        console.error("Ошибка: тариф не выбран или невалиден (финал)", tariff);
-        await ctx.reply(
-          "Ошибка: тариф не выбран. Пожалуйста, начните заказ заново и выберите тариф.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      if (typeof price !== "number" || isNaN(price)) {
-        // Пересчёт для fullResumeScene
-        if (tariff === "junior") price = PRICE_FULL_JUNIOR;
-        else if (tariff === "pro") price = PRICE_FULL_PRO;
-        else if (tariff === "lead") price = PRICE_FULL_LEAD;
-        // Можно добавить доп. опции, если они есть
-        if (
-          (ctx.session as any).upsell &&
-          typeof PRICE_UPSELL_VIDEO === "number"
-        ) {
-          price += PRICE_UPSELL_VIDEO;
-        }
-      }
-      if (typeof price !== "number" || isNaN(price)) {
-        console.error(
-          "Ошибка: цена не определена даже после пересчёта (финал)",
-          tariff,
-          price,
-        );
-        await ctx.reply(
-          "Ошибка: цена услуги не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      (ctx.session as any).price = price;
-      const rest = Math.ceil(price / 2);
-      if (isNaN(rest)) {
-        console.error(
-          "Ошибка: сумма финальной оплаты не определена или не число",
-          price,
-        );
-        await ctx.reply(
-          "Ошибка: сумма финальной оплаты не задана. Пожалуйста, обратитесь к администратору.",
-          { parse_mode: 'HTML' }
-        );
-        return;
-      }
-      await ctx.reply(
-        MESSAGES.fullResume.finalPaymentInstructions(rest),
-        { ...Markup.keyboard([[MESSAGES.buttons.attachReceiptFinal]]).resize(), parse_mode: 'HTML' }
-      );
-      return ctx.wizard.next();
-    }
-    await ctx.reply(MESSAGES.common.paySecondPart, { parse_mode: 'HTML' });
-  },
-  // Шаг 8: Загрузка финального чека
-  async (ctx) => {
-    if (ctx.message && "text" in ctx.message && isCommand(ctx.message.text)) {
-      console.log(`[SCENE] Пользователь ${ctx.from?.id} начал новую команду (fullResumeScene)`);
-      await ctx.reply("Вы начали новую команду. Возвращаю в главное меню.", { parse_mode: 'HTML' });
-      await ctx.scene.leave();
-      await ctx.scene.enter("mainMenu");
-      return;
-    }
-    if (
-      ctx.message &&
-      "text" in ctx.message &&
-      ctx.message.text === MESSAGES.buttons.attachReceiptFinal
-    ) {
-      await ctx.reply(MESSAGES.exampleResume.attachReceipt, { parse_mode: 'HTML' });
-      return;
-    }
     if (ctx.message && "photo" in ctx.message) {
-      if (
-        isFileTooLarge(
-          ctx.message.photo[ctx.message.photo.length - 1].file_size || 0,
-          50,
-        )
-      ) {
-        await ctx.reply("Файл слишком большой. Максимальный размер — 50 МБ.", { parse_mode: 'HTML' });
-        return;
-      }
-      (ctx.session as any).finalReceiptFileId =
-        ctx.message.photo[ctx.message.photo.length - 1].file_id;
-      await ctx.reply(
-        MESSAGES.fullResume.orderCompleted,
-        Markup.removeKeyboard(),
-      );
+      const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      (ctx.session as any).finalReceiptFileId = photo.file_id;
+      await ctx.reply('Запись произведена. До встречи. Ссылка на встречу будет выслана в ваш Телеграмм за 5 минут до её начала', Markup.removeKeyboard());
       // Уведомление админу о полной оплате
-      const adminMsg = MESSAGES.fullResume.adminPaymentNotification(
-        (ctx.session as any).orderId,
-        ctx.from?.first_name || "",
-        ctx.from?.username || "",
-        (ctx.session as any).userId,
-        (ctx.session as any).tariff,
-      );
+      const adminMsg = `Поступила полная оплата по заказу №${(ctx.session as any).orderId}. Необходимо начать работу.
+
+Информация о заказе:
+-----------------
+🗂 Старое резюме: ${(ctx.session as any).oldResumeFileName ? `Прикреплено (${(ctx.session as any).oldResumeFileName})` : 'Не предоставлено'}
+🎯 Желаемая вакансия/должность: ${(ctx.session as any).vacancyUrl || 'Не указано'}
+📝 Дополнительные пожелания: ${(ctx.session as any).comment || 'Не указано'}
+📅 Время интервью: ${(ctx.session as any).interviewTime}
+-----------------`;
+
       await ctx.telegram.sendPhoto(
         ADMIN_CHAT_ID,
-        (ctx.session as any).finalReceiptFileId,
+        photo.file_id,
         {
           caption: adminMsg,
           reply_markup: {
             inline_keyboard: [
               [
-                {
-                  text: "📂 Отправить файл",
-                  callback_data: `send_result_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
-                },
+                { text: '🔗 Отправить ссылку', callback_data: `send_link_${(ctx.session as any).orderId}_${(ctx.session as any).userId}` },
+                { text: '📂 Отправить документ', callback_data: `send_doc_${(ctx.session as any).orderId}_${(ctx.session as any).userId}` },
               ],
             ],
           },
-        },
+        }
       );
-      await sendAdminEmail(
-        `Полная оплата №${(ctx.session as any).orderId}`,
-        adminMsg,
-      );
+
+      // Если есть старое резюме, отправляем его отдельным сообщением
+      if ((ctx.session as any).oldResumeFileId) {
+        await ctx.telegram.sendDocument(
+          ADMIN_CHAT_ID,
+          (ctx.session as any).oldResumeFileId,
+          {
+            caption: `Старое резюме клиента (заказ №${(ctx.session as any).orderId})`,
+          }
+        );
+      }
+
+      await sendAdminEmail(`Полная оплата №${(ctx.session as any).orderId}`, adminMsg);
       return ctx.scene.leave();
+    } else if (ctx.message && "document" in ctx.message) {
+      await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).', { parse_mode: 'HTML' });
+    } else {
+      await ctx.reply('Пожалуйста, прикрепите изображение чека (jpg, jpeg, png).', { parse_mode: 'HTML' });
     }
-    await ctx.reply(MESSAGES.common.attachReceipt, { parse_mode: 'HTML' });
   },
 );
 

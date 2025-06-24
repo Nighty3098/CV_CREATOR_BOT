@@ -47,6 +47,7 @@ interface PendingAdminAction {
   orderId: string;
   userId: number;
   realUserId: number;
+  type?: string;
 }
 const pendingAdminActions = new Map<number, PendingAdminAction>();
 
@@ -93,6 +94,49 @@ bot.on("callback_query", async (ctx) => {
         realUserId: userId,
       });
     }
+    // --- Новый функционал: отправка ссылки и документа клиенту ---
+    if (data.startsWith("send_link_")) {
+      if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
+        await ctx.answerCbQuery(MESSAGES.admin.noAccess);
+        return;
+      }
+      const match = data.match(/^send_link_(.+)_(\d+)$/);
+      if (!match) {
+        await ctx.reply("Ошибка: не удалось определить заказ или пользователя.");
+        return;
+      }
+      const orderId = match[1];
+      const userId = Number(match[2]);
+      await ctx.reply("Пожалуйста, отправьте ссылку для клиента.");
+      pendingAdminActions.set(ctx.from.id, {
+        orderId,
+        userId,
+        realUserId: userId,
+        type: "link"
+      });
+      return;
+    }
+    if (data.startsWith("send_doc_")) {
+      if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
+        await ctx.answerCbQuery(MESSAGES.admin.noAccess);
+        return;
+      }
+      const match = data.match(/^send_doc_(.+)_(\d+)$/);
+      if (!match) {
+        await ctx.reply("Ошибка: не удалось определить заказ или пользователя.");
+        return;
+      }
+      const orderId = match[1];
+      const userId = Number(match[2]);
+      await ctx.reply("Пожалуйста, отправьте документ для клиента (PDF, DOCX и т.д.).");
+      pendingAdminActions.set(ctx.from.id, {
+        orderId,
+        userId,
+        realUserId: userId,
+        type: "doc"
+      });
+      return;
+    }
   } catch (err) {
     console.error('Error in callback_query handler:', err);
     await ctx.reply('Произошла ошибка при обработке запроса. Попробуйте ещё раз.');
@@ -107,6 +151,41 @@ bot.on("message", async (ctx) => {
       pendingAdminActions.has(ctx.from.id)
     ) {
       const action = pendingAdminActions.get(ctx.from.id)!;
+      // Если ждем ссылку
+      if (action.type === "link" && ctx.message && "text" in ctx.message) {
+        try {
+          await ctx.telegram.sendMessage(
+            action.userId,
+            ctx.message.text
+          );
+          await ctx.reply("Ссылка отправлена клиенту.");
+          pendingAdminActions.delete(ctx.from.id);
+          return;
+        } catch (err) {
+          await ctx.reply("Ошибка при отправке ссылки клиенту.");
+          pendingAdminActions.delete(ctx.from.id);
+          return;
+        }
+      }
+      // Если ждем документ
+      if (action.type === "doc" && ctx.message && "document" in ctx.message) {
+        try {
+          await ctx.telegram.sendDocument(
+            action.userId,
+            ctx.message.document.file_id,
+            {
+              caption: "Ваше резюме готово! Ссылка на облачное хранилище будет доступна 48 часов, пожалуйста, сохраните файл себе на компьютер."
+            }
+          );
+          await ctx.reply("Документ отправлен клиенту.");
+          pendingAdminActions.delete(ctx.from.id);
+          return;
+        } catch (err) {
+          await ctx.reply("Ошибка при отправке документа клиенту.");
+          pendingAdminActions.delete(ctx.from.id);
+          return;
+        }
+      }
       // Если ждем userId
       if (
         action.userId === 0 &&
