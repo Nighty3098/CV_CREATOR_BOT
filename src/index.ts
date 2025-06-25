@@ -40,6 +40,11 @@ bot.hears(MESSAGES.buttons.workWithResume, (ctx) =>
   ctx.scene.enter("mainMenu"),
 );
 
+bot.hears(MESSAGES.buttons.editMainMenu, async (ctx) => {
+  await ctx.scene.leave();
+  await ctx.reply(MESSAGES.welcome, { ...getMainMenu(), parse_mode: 'HTML' });
+});
+
 // TODO: Подключить все сцены и обработчики
 
 // --- Админ-функционал: анонимная отправка результата клиенту ---

@@ -37,14 +37,44 @@ mainMenuScene.enter((ctx) => {
   ctx.reply(
     MESSAGES.mainMenu,
     { ...Markup.keyboard([
-      [MESSAGES.buttons.exampleResume],
-      [MESSAGES.buttons.reviewResume],
-      [MESSAGES.buttons.fullResume],
+      [MESSAGES.buttons.exampleResume, MESSAGES.buttons.infoExample],
+      [MESSAGES.buttons.reviewResume, MESSAGES.buttons.infoReview],
+      [MESSAGES.buttons.fullResume, MESSAGES.buttons.infoFull],
       [MESSAGES.buttons.exit],
     ]).resize(), parse_mode: 'HTML' }
   );
 });
 
+// --- Обработка info-кнопок главного меню ---
+mainMenuScene.hears(MESSAGES.buttons.infoExample, async (ctx) => {
+  (ctx.session as any).mainMenuInfoSelected = "example";
+  await ctx.reply(
+    MESSAGES.mainMenuInfo.example,
+    { ...Markup.keyboard([
+      ["⬅️ Назад к меню", "✅ Выбрать эту услугу"]
+    ]).resize(), parse_mode: 'HTML' }
+  );
+});
+mainMenuScene.hears(MESSAGES.buttons.infoReview, async (ctx) => {
+  (ctx.session as any).mainMenuInfoSelected = "review";
+  await ctx.reply(
+    MESSAGES.mainMenuInfo.review,
+    { ...Markup.keyboard([
+      ["⬅️ Назад к меню", "✅ Выбрать эту услугу"]
+    ]).resize(), parse_mode: 'HTML' }
+  );
+});
+mainMenuScene.hears(MESSAGES.buttons.infoFull, async (ctx) => {
+  (ctx.session as any).mainMenuInfoSelected = "full";
+  await ctx.reply(
+    MESSAGES.mainMenuInfo.full,
+    { ...Markup.keyboard([
+      ["⬅️ Назад к меню", "✅ Выбрать эту услугу"]
+    ]).resize(), parse_mode: 'HTML' }
+  );
+});
+
+// --- Основные кнопки главного меню ---
 mainMenuScene.hears(MESSAGES.buttons.exampleResume, (ctx) =>
   ctx.scene.enter("exampleScene"),
 );
@@ -54,9 +84,22 @@ mainMenuScene.hears(MESSAGES.buttons.reviewResume, (ctx) =>
 mainMenuScene.hears(MESSAGES.buttons.fullResume, (ctx) =>
   ctx.scene.enter("fullResumeScene"),
 );
-mainMenuScene.hears(MESSAGES.buttons.exit, (ctx) => {
-  ctx.reply(MESSAGES.exit, Markup.removeKeyboard());
-  ctx.scene.leave();
+
+mainMenuScene.hears("⬅️ Назад к меню", (ctx) => {
+  ctx.scene.reenter();
+});
+mainMenuScene.hears("✅ Выбрать эту услугу", async (ctx) => {
+  const selected = (ctx.session as any).mainMenuInfoSelected;
+  if (selected === "example") {
+    await ctx.scene.enter("exampleScene");
+  } else if (selected === "review") {
+    await ctx.scene.enter("reviewScene");
+  } else if (selected === "full") {
+    await ctx.scene.enter("fullResumeScene");
+  } else {
+    await ctx.reply("Пожалуйста, выберите услугу из меню.");
+    ctx.scene.reenter();
+  }
 });
 
 // --- Сценарий "Пример резюме из базы" ---
@@ -977,33 +1020,44 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 3.1: Вопрос 1 — старое резюме
   async (ctx) => {
-    // Обработка info-кнопок и closeTariffInfo (в начало шага)
+    // Обработка info-кнопок и выбора тарифа из инфо
     if (ctx.message && "text" in ctx.message) {
+      // --- Информация о тарифах ---
       if (ctx.message.text === MESSAGES.buttons.infoJunior) {
+        (ctx.session as any).tariffInfoSelected = "junior";
         await ctx.reply(
           MESSAGES.fullResume.juniorInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
         return;
       }
       if (ctx.message.text === MESSAGES.buttons.infoPro) {
+        (ctx.session as any).tariffInfoSelected = "pro";
         await ctx.reply(
           MESSAGES.fullResume.proInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
         return;
       }
       if (ctx.message.text === MESSAGES.buttons.infoLead) {
+        (ctx.session as any).tariffInfoSelected = "lead";
         await ctx.reply(
           MESSAGES.fullResume.leadInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
         return;
       }
-      if (ctx.message.text === MESSAGES.buttons.closeTariffInfo) {
+      // --- Кнопка 'Назад к тарифам' ---
+      if (ctx.message.text === MESSAGES.buttons.backToTariffList) {
         await ctx.reply(
           MESSAGES.fullResume.tariffSelection,
           { ...Markup.keyboard([
@@ -1016,11 +1070,35 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         ctx.wizard.selectStep(ctx.wizard.cursor - 1);
         return;
       }
-
-      // Обработка выбора тарифа
+      // --- Кнопка 'Выбрать этот тариф' ---
+      if (ctx.message.text === MESSAGES.buttons.selectThisTariff) {
+        const selected = (ctx.session as any).tariffInfoSelected;
+        let tariff = "";
+        let price = 0;
+        if (selected === "junior") {
+          tariff = "junior";
+          price = PRICE_FULL_JUNIOR;
+        } else if (selected === "pro") {
+          tariff = "pro";
+          price = PRICE_FULL_PRO;
+        } else if (selected === "lead") {
+          tariff = "lead";
+          price = PRICE_FULL_LEAD;
+        } else {
+          await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
+          return;
+        }
+        (ctx.session as any).tariff = tariff;
+        (ctx.session as any).price = price;
+        await ctx.reply(
+          'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+        );
+        return ctx.wizard.next();
+      }
+      // --- Обычный выбор тарифа ---
       let tariff = "";
       let price = 0;
-      
       if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
         tariff = "junior";
         price = PRICE_FULL_JUNIOR;
@@ -1037,12 +1115,8 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
         return;
       }
-
-      // Сохраняем выбранный тариф и цену
       (ctx.session as any).tariff = tariff;
       (ctx.session as any).price = price;
-
-      // Переходим к следующему шагу
       await ctx.reply(
         'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
         { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
@@ -1129,12 +1203,15 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     if (ctx.message && "photo" in ctx.message) {
       const photo = ctx.message.photo[ctx.message.photo.length - 1];
       (ctx.session as any).finalReceiptFileId = photo.file_id;
-      await ctx.reply('Запись произведена. До встречи. Ссылка на встречу будет выслана в ваш Телеграмм за 5 минут до её начала', Markup.removeKeyboard());
+      await ctx.reply('Запись произведена. До встречи. Ссылка на встречу будет выслана в ваш Телеграмм за 5 минут до её начала', 
+        { ...Markup.keyboard([[MESSAGES.buttons.editMainMenu]]).resize(), parse_mode: 'HTML' }
+      );
       // Уведомление админу о полной оплате
       const adminMsg = `Поступила полная оплата по заказу №${(ctx.session as any).orderId}. Необходимо начать работу.
 
 Информация о заказе:
 -----------------
+Тариф: ${((ctx.session as any).tariff === 'junior') ? 'Исполнитель' : (ctx.session as any).tariff === 'pro' ? 'Профи' : (ctx.session as any).tariff === 'lead' ? 'Руководитель' : '—'}
 🗂 Старое резюме: ${(ctx.session as any).oldResumeFileName ? `Прикреплено (${(ctx.session as any).oldResumeFileName})` : 'Не предоставлено'}
 🎯 Желаемая вакансия/должность: ${(ctx.session as any).vacancyUrl || 'Не указано'}
 📝 Дополнительные пожелания: ${(ctx.session as any).comment || 'Не указано'}
