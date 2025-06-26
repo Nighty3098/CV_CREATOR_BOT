@@ -339,15 +339,6 @@ bot.on("message", async (ctx) => {
   }
 });
 
-bot.launch();
-
-// Enable graceful stop
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
-
-// В каждом wizard-сценарии после генерации orderId и заполнения данных заказа:
-// orders[orderId] = { ... };
-
 function findOrderByOrderId(orderId: string): Order | undefined {
   return orders[orderId];
 }
@@ -398,8 +389,14 @@ function scheduleInterviewReminders(order: Order, botInstance: typeof bot) {
   }
 }
 
+// --- Vercel serverless webhook endpoint ---
 const app = express();
 app.use(express.json());
+
+// Endpoint для Telegram webhook
+app.post("/api/webhook", (req, res) => {
+  bot.handleUpdate(req.body, res);
+});
 
 app.post("/calendly-webhook", (req: Request, res: Response) => {
   const { email, name, event_time } = req.body;
@@ -431,8 +428,4 @@ app.post("/calendly-webhook", (req: Request, res: Response) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log("Calendly webhook listening on port 3001");
-});
-
-export { scheduleInterviewReminders, bot };
+export default app;
