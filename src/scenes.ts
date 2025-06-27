@@ -977,6 +977,39 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
       await ctx.scene.enter("mainMenu");
       return;
     }
+    // Обработка прямого выбора тарифа на этом шаге
+    if (ctx.message && "text" in ctx.message) {
+      if (ctx.message.text === MESSAGES.buttons.juniorTariff()) {
+        (ctx.session as any).tariff = "junior";
+        (ctx.session as any).price = PRICE_FULL_JUNIOR;
+        console.log(`[TARIFF SELECTED] Пользователь ${ctx.from?.id} выбрал тариф: junior`);
+        await ctx.reply(
+          'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+        );
+        return ctx.wizard.next();
+      }
+      if (ctx.message.text === MESSAGES.buttons.proTariff()) {
+        (ctx.session as any).tariff = "pro";
+        (ctx.session as any).price = PRICE_FULL_PRO;
+        console.log(`[TARIFF SELECTED] Пользователь ${ctx.from?.id} выбрал тариф: pro`);
+        await ctx.reply(
+          'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+        );
+        return ctx.wizard.next();
+      }
+      if (ctx.message.text === MESSAGES.buttons.leadTariff()) {
+        (ctx.session as any).tariff = "lead";
+        (ctx.session as any).price = PRICE_FULL_LEAD;
+        console.log(`[TARIFF SELECTED] Пользователь ${ctx.from?.id} выбрал тариф: lead`);
+        await ctx.reply(
+          'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+        );
+        return ctx.wizard.next();
+      }
+    }
     // Обработка кнопок информации о тарифах
     if (ctx.message && "text" in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.infoJunior) {
@@ -1115,7 +1148,6 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
             [MESSAGES.buttons.back],
           ]).resize(), parse_mode: 'HTML' }
         );
-        ctx.wizard.selectStep(ctx.wizard.cursor - 1);
         return;
       }
       // --- Кнопка 'Выбрать этот тариф' ---
