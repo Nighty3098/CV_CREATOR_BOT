@@ -54,12 +54,12 @@ export const MESSAGES = {
     infoJunior: "ℹ️ О тарифе 'Исполнитель'",
     infoPro: "ℹ️ О тарифе 'Профи'",
     infoLead: "ℹ️ О тарифе 'Руководитель'",
-    closeTariffInfo: "❌ Закрыть информацию и выбрать тариф",
+    closeTariffInfo: "Закрыть информацию",
     backToTariffList: "⬅️ Назад к тарифам",
     selectThisTariff: "✅ Выбрать этот тариф",
-    infoExample: "ℹ️ Об услуге",
-    infoReview: "ℹ️ Об услуге",
-    infoFull: "ℹ️ Об услуге",
+    infoExample: "ℹ️ Об услуге (Пример)",
+    infoReview: "ℹ️ Об услуге (Разбор)",
+    infoFull: "ℹ️ Об услуге (Под ключ)",
   },
 
   // Сценарий "Готовое резюме из базы"
