@@ -73,32 +73,6 @@ bot.on("callback_query", async (ctx) => {
       await ctx.reply(MESSAGES.welcome, { ...getMainMenu(), parse_mode: 'HTML' });
       return;
     }
-    if (data.startsWith("send_result_")) {
-      // Только для админа
-      if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
-        await ctx.answerCbQuery(MESSAGES.admin.noAccess);
-        return;
-      }
-      // Парсим orderId и userId из callback_data
-      const match = data.match(/^send_result_(.+)_(\d+)$/);
-      if (!match) {
-        await ctx.reply(MESSAGES.admin.errorParsingUser);
-        pendingAdminActions.set(ctx.from.id, {
-          orderId: "",
-          userId: 0,
-          realUserId: 0,
-        });
-        return;
-      }
-      const orderId = match[1];
-      const userId = Number(match[2]);
-      await ctx.reply(MESSAGES.admin.sendFile);
-      pendingAdminActions.set(ctx.from.id, {
-        orderId,
-        userId,
-        realUserId: userId,
-      });
-    }
     // --- Новый функционал: отправка ссылки и документа клиенту ---
     if (data.startsWith("send_link_")) {
       if (ctx.from?.id?.toString() !== ADMIN_CHAT_ID) {
@@ -161,7 +135,7 @@ bot.on("message", async (ctx) => {
         try {
           await ctx.telegram.sendMessage(
             action.userId,
-            ctx.message.text
+            'Ваше резюме готово! Ссылка на облачное хранилище будет доступна 48 часов, пожалуйста, сохраните файл себе на компьютер\n' + ctx.message.text
           );
           await ctx.reply("Ссылка отправлена клиенту.");
           pendingAdminActions.delete(ctx.from.id);
@@ -427,5 +401,10 @@ app.post("/calendly-webhook", (req: Request, res: Response) => {
     res.status(404).send("order not found");
   }
 });
+
+if (process.env.NODE_ENV !== 'production') {
+  bot.launch();
+  console.log('Bot started in polling mode (dev)');
+}
 
 export default app;

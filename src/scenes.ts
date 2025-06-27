@@ -383,8 +383,8 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
           inline_keyboard: [
             [
               {
-                text: "📂 Отправить файл",
-                callback_data: `send_result_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
+                text: "🔗 Отправить ссылку",
+                callback_data: `send_link_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
               },
             ],
           ],
@@ -439,8 +439,8 @@ export const exampleScene = new Scenes.WizardScene<BotContext>(
               inline_keyboard: [
                 [
                   {
-                    text: "📂 Отправить файл",
-                    callback_data: `send_result_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
+                    text: "🔗 Отправить ссылку",
+                    callback_data: `send_link_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
                   },
                 ],
               ],
@@ -827,8 +827,8 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
           inline_keyboard: [
             [
               {
-                text: "📂 Отправить файл",
-                callback_data: `send_result_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
+                text: "🔗 Отправить ссылку",
+                callback_data: `send_link_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
               },
             ],
           ],
@@ -880,8 +880,8 @@ export const reviewScene = new Scenes.WizardScene<BotContext>(
               inline_keyboard: [
                 [
                   {
-                    text: "📂 Отправить файл",
-                    callback_data: `send_result_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
+                    text: "🔗 Отправить ссылку",
+                    callback_data: `send_link_${(ctx.session as any).orderId}_${(ctx.session as any).userId}`,
                   },
                 ],
               ],
@@ -1200,6 +1200,11 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
   },
   // Шаг 8: Ожидание файла (только изображение)
   async (ctx) => {
+    if (ctx.message && "text" in ctx.message && ctx.message.text === MESSAGES.buttons.editMainMenu) {
+      await ctx.scene.leave();
+      await ctx.scene.enter("mainMenu");
+      return;
+    }
     if (ctx.message && "photo" in ctx.message) {
       const photo = ctx.message.photo[ctx.message.photo.length - 1];
       (ctx.session as any).finalReceiptFileId = photo.file_id;
