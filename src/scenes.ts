@@ -102,6 +102,11 @@ mainMenuScene.hears("✅ Выбрать эту услугу", async (ctx) => {
   }
 });
 
+mainMenuScene.hears(MESSAGES.buttons.exit, async (ctx) => {
+  await ctx.scene.leave();
+  await ctx.reply(MESSAGES.welcome, { ...Markup.keyboard([[MESSAGES.buttons.workWithResume]]).resize(), parse_mode: 'HTML' });
+});
+
 // --- Сценарий "Пример резюме из базы" ---
 export const exampleScene = new Scenes.WizardScene<BotContext>(
   "exampleScene",
