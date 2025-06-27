@@ -1057,6 +1057,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         }
         (ctx.session as any).tariff = tariff;
         (ctx.session as any).price = price;
+        console.log(`[TARIFF SELECTED] Пользователь ${ctx.from?.id} выбрал тариф: ${tariff}`);
         await ctx.reply(
           'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
           { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
@@ -1137,6 +1138,7 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         }
         (ctx.session as any).tariff = tariff;
         (ctx.session as any).price = price;
+        console.log(`[TARIFF SELECTED] Пользователь ${ctx.from?.id} выбрал тариф: ${tariff}`);
         await ctx.reply(
           'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
           { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
