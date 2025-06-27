@@ -980,27 +980,48 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
     // Обработка кнопок информации о тарифах
     if (ctx.message && "text" in ctx.message) {
       if (ctx.message.text === MESSAGES.buttons.infoJunior) {
+        (ctx.session as any).tariffInfoSelected = "junior";
         await ctx.reply(
           MESSAGES.fullResume.juniorInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
         return;
       }
       if (ctx.message.text === MESSAGES.buttons.infoPro) {
+        (ctx.session as any).tariffInfoSelected = "pro";
         await ctx.reply(
           MESSAGES.fullResume.proInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
         return;
       }
       if (ctx.message.text === MESSAGES.buttons.infoLead) {
+        (ctx.session as any).tariffInfoSelected = "lead";
         await ctx.reply(
           MESSAGES.fullResume.leadInfo,
-          { ...Markup.keyboard([[MESSAGES.buttons.closeTariffInfo]]).resize(), parse_mode: 'HTML' }
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.backToTariffList, MESSAGES.buttons.selectThisTariff],
+          ]).resize(), parse_mode: 'HTML' }
         );
         ctx.wizard.selectStep(ctx.wizard.cursor);
+        return;
+      }
+      if (ctx.message.text === MESSAGES.buttons.backToTariffList) {
+        await ctx.reply(
+          MESSAGES.fullResume.tariffSelection,
+          { ...Markup.keyboard([
+            [MESSAGES.buttons.juniorTariff(), MESSAGES.buttons.infoJunior],
+            [MESSAGES.buttons.proTariff(), MESSAGES.buttons.infoPro],
+            [MESSAGES.buttons.leadTariff(), MESSAGES.buttons.infoLead],
+            [MESSAGES.buttons.back],
+          ]).resize(), parse_mode: 'HTML' }
+        );
         return;
       }
       if (ctx.message.text === MESSAGES.buttons.closeTariffInfo) {
@@ -1015,6 +1036,32 @@ export const fullResumeScene = new Scenes.WizardScene<BotContext>(
         );
         ctx.wizard.selectStep(ctx.wizard.cursor - 1);
         return;
+      }
+      // Добавляю обработку кнопки 'Выбрать этот тариф' на этом шаге
+      if (ctx.message.text === MESSAGES.buttons.selectThisTariff) {
+        const selected = (ctx.session as any).tariffInfoSelected;
+        let tariff = "";
+        let price = 0;
+        if (selected === "junior") {
+          tariff = "junior";
+          price = PRICE_FULL_JUNIOR;
+        } else if (selected === "pro") {
+          tariff = "pro";
+          price = PRICE_FULL_PRO;
+        } else if (selected === "lead") {
+          tariff = "lead";
+          price = PRICE_FULL_LEAD;
+        } else {
+          await ctx.reply(MESSAGES.common.selectTariff, { parse_mode: 'HTML' });
+          return;
+        }
+        (ctx.session as any).tariff = tariff;
+        (ctx.session as any).price = price;
+        await ctx.reply(
+          'Прикрепите ваше старое резюме, если оно есть. Если нет — пропустите.',
+          { ...Markup.keyboard([[MESSAGES.buttons.skip]]).resize(), parse_mode: 'HTML' }
+        );
+        return ctx.wizard.next();
       }
     }
   },
