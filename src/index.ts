@@ -31,13 +31,7 @@ function getMainMenu() {
   return Markup.keyboard([[MESSAGES.buttons.workWithResume]]).resize();
 }
 
-const ALLOWED_USERNAME = 'Night3098'; // замените на нужный ник без @
-
 bot.start((ctx) => {
-  if (ctx.from?.username !== ALLOWED_USERNAME) {
-    ctx.reply('...');
-    return;
-  }
   console.log(`[START] Пользователь ${ctx.from?.id} (${ctx.from?.username}) запустил бота`);
   ctx.reply(MESSAGES.welcome, { ...getMainMenu(), parse_mode: 'HTML' });
 });
